@@ -42,6 +42,11 @@ find "$ROOTFS_DIR/lib" "$ROOTFS_DIR/usr/lib" -type f -name "*.so*" 2>/dev/null |
     chmod 644 "$file" 2>/dev/null || true
 done
 
+# Fix dynamic linker permissions (critical for execution)
+find "$ROOTFS_DIR" -type f \( -name "ld-linux*.so.*" -o -name "ld64.so.*" -o -name "ld-*.so" \) 2>/dev/null | while read -r file; do
+    chmod 755 "$file" 2>/dev/null || true
+done
+
 # Ensure penv scripts are executable
 chmod 755 "$ROOTFS_DIR/penv" 2>/dev/null || true
 find "$ROOTFS_DIR/penv" -type f -name "*.sh" -exec chmod 755 {} \; 2>/dev/null || true
