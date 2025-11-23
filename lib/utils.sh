@@ -122,6 +122,7 @@ download_file(){
   
   echo
   msg "Download complete: $(basename "$out")"
+  return 0
 }
 
 # Extract tarball preserving permissions
@@ -173,6 +174,8 @@ setup_proot_env(){
     mkdir -p "$rootfs/etc"
     cp -L /etc/resolv.conf "$rootfs/etc/resolv.conf" 2>/dev/null || true
   fi
+  
+  return 0
 }
 
 # Execute command in proot environment

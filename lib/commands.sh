@@ -89,7 +89,11 @@ cmd::download(){
     return 2
   fi
   
-  distro::download "$distro_id" "$custom_name" "${addons[@]}"
+  if [[ ${#addons[@]} -gt 0 ]]; then
+    distro::download "$distro_id" "$custom_name" "${addons[@]}"
+  else
+    distro::download "$distro_id" "$custom_name"
+  fi
 }
 
 cmd::create(){

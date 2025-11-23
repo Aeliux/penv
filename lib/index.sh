@@ -34,6 +34,8 @@ index::init_local(){
       index::migrate_local_index
     fi
   fi
+  
+  return 0
 }
 
 # Migrate old local index format to new unified format
@@ -266,6 +268,8 @@ index::store_downloaded(){
        '.distros[$id] = {file: $path, downloaded: $date, type: $type}' \
        "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
   fi
+  
+  return 0
 }
 
 # Get local path for downloaded distro (resolves aliases to base distro file)

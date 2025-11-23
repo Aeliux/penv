@@ -60,7 +60,7 @@ distro::download(){
   
   # Check if base distro exists, download if not
   local base_distro_file
-  base_distro_file=$(index::get_local_path "$actual_distro_id")
+  base_distro_file=$(index::get_local_path "$actual_distro_id" || true)
   
   if [[ -z "$base_distro_file" ]] || [[ ! -f "$base_distro_file" ]]; then
     # Base distro doesn't exist, download it
@@ -135,6 +135,8 @@ distro::download(){
     fi
     info "File: $base_distro_file"
   fi
+  
+  return 0
 }
 
 # Apply addons to a distro
