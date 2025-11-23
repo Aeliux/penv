@@ -22,7 +22,7 @@ index::fetch_remote(){
 # Initialize local index if it doesn't exist
 index::init_local(){
   if [[ ! -f "$LOCAL_INDEX" ]]; then
-    echo '{\"distros\":{}}' > "$LOCAL_INDEX"
+    echo '{"distros":{}}' > "$LOCAL_INDEX"
   else
     # Migrate from legacy format (pre-v2.0) if needed
     if jq -e '.custom' "$LOCAL_INDEX" >/dev/null 2>&1; then
