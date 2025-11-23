@@ -121,7 +121,7 @@ jobs:
       - name: Generate release notes
         id: release_notes
         run: |
-          cat > release_notes.md << 'EOF'
+          cat > release_notes.md << EOF
           ## Rootfs Images
 
           This release includes pre-built rootfs images for multiple distributions, architectures, and releases.
@@ -139,20 +139,20 @@ jobs:
           - **Focal (20.04)** - LTS
 
           ### Architectures
-          - `amd64` - 64-bit x86
-          - `i386` - 32-bit x86
-          - `arm64` - 64-bit ARM (ARMv8)
-          - `armhf` - 32-bit ARM (ARMv7)
+          - \`amd64\` - 64-bit x86
+          - \`i386\` - 32-bit x86
+          - \`arm64\` - 64-bit ARM (ARMv8)
+          - \`armhf\` - 32-bit ARM (ARMv7)
 
           ### File Naming Convention
-          ```
+          \`\`\`
           {distro}-{release}-{arch}-rootfs.tar.gz
-          ```
+          \`\`\`
 
-          Example: `ubuntu-noble-arm64-rootfs.tar.gz`
+          Example: \`ubuntu-noble-amd64-rootfs.tar.gz\`
 
           ### Checksums
-          See `SHA256SUMS` file for all checksums.
+          See \`SHA256SUMS\` file for all checksums.
 
           ---
           
