@@ -27,11 +27,56 @@ index::fetch_remote(){
 # Initialize local index if it doesn't exist
 index::init_local(){
   if [[ ! -f "$LOCAL_INDEX" ]]; then
-    echo '{"distros":{},"custom":{}}' > "$LOCAL_INDEX"
+    echo '{"distros":{}}' > "$LOCAL_INDEX"
+  else
+    # Migrate old format to new format if needed
+    if jq -e '.custom' "$LOCAL_INDEX" >/dev/null 2>&1; then
+      index::migrate_local_index
+    fi
   fi
 }
 
-# Get distro info from index (remote or local custom)
+# Migrate old local index format to new unified format
+index::migrate_local_index(){
+  require_jq
+  
+  info "Migrating local index to new format..." >&2
+  
+  local tmp_file
+  tmp_file=$(mktemp)
+  
+  # Convert old format to new format
+  jq '
+    # Start with existing distros, convert them to new format
+    (.distros | to_entries | map({
+      key: .key,
+      value: {
+        file: .value.file,
+        downloaded: .value.downloaded,
+        type: "base"
+      }
+    }) | from_entries) as $base_distros |
+    
+    # Process custom distros
+    (.custom | to_entries | map({
+      key: .key,
+      value: {
+        file: ($base_distros[.key].file // ($base_distros[.value.source].file // "")),
+        downloaded: ($base_distros[.key].downloaded // (now | strftime("%Y-%m-%dT%H:%M:%S%z"))),
+        base_distro: .value.source,
+        addons: [],
+        type: "alias"
+      }
+    }) | from_entries) as $custom_distros |
+    
+    # Merge base and custom distros
+    {distros: ($base_distros + $custom_distros)}
+  ' "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
+  
+  msg "Local index migrated successfully" >&2
+}
+
+# Get distro info from remote index
 index::get_distro(){
   local distro_id="$1"
   require_jq
@@ -39,22 +84,9 @@ index::get_distro(){
   local remote_index
   remote_index=$(index::fetch_remote) || return 1
   
-  index::init_local
-  
-  # Try remote index first
+  # Get from remote index only
   local data
   data=$(jq -r ".distros[\"$distro_id\"] // empty" "$remote_index" 2>/dev/null)
-  
-  # Fall back to local custom distros
-  if [[ -z "$data" || "$data" == "null" ]]; then
-    # Check if it's a custom distro pointing to a real one
-    local source_id
-    source_id=$(jq -r ".custom[\"$distro_id\"].source // empty" "$LOCAL_INDEX" 2>/dev/null)
-    if [[ -n "$source_id" && "$source_id" != "null" ]]; then
-      # Get the real distro data from source
-      data=$(jq -r ".distros[\"$source_id\"] // empty" "$remote_index" 2>/dev/null)
-    fi
-  fi
   
   if [[ -z "$data" || "$data" == "null" ]]; then
     return 1
@@ -105,34 +137,18 @@ index::addon_compatible(){
   return 1
 }
 
-# List all available distros
+# List all available distros from remote index
 index::list_distros(){
   require_jq
   
   local remote_index
   remote_index=$(index::fetch_remote) || return 1
   
-  index::init_local
-  
   header "Available Distributions"
   
-  echo -e "${C_BOLD}${C_CYAN}Remote Distributions:${C_RESET}"
   jq -r '.distros | to_entries[] | "\(.key)|\(.value.name)|\(.value.description)"' "$remote_index" 2>/dev/null | sort | while IFS='|' read -r id name desc; do
     printf "  ${C_GREEN}%-30s${C_RESET} ${C_DIM}%s${C_RESET}\n" "$id" "$desc"
   done
-  
-  echo
-  echo -e "${C_BOLD}${C_CYAN}Custom Distributions:${C_RESET}"
-  local custom_count
-  custom_count=$(jq -r '.custom | length' "$LOCAL_INDEX" 2>/dev/null)
-  
-  if [[ "$custom_count" -gt 0 ]]; then
-    jq -r '.custom | to_entries[] | "\(.key)|\(.value.source)"' "$LOCAL_INDEX" 2>/dev/null | sort | while IFS='|' read -r id source; do
-      printf "  ${C_CYAN}%-30s${C_RESET} ${C_DIM}(alias of %s)${C_RESET}\n" "$id" "$source"
-    done
-  else
-    echo -e "  ${C_DIM}No custom distributions yet${C_RESET}"
-  fi
   
   echo
 }
@@ -166,29 +182,26 @@ index::list_addons(){
   echo
 }
 
-# Add a custom distro alias to local index
-index::add_custom(){
-  local custom_id="$1" source_id="$2" custom_name="$3"
-  require_jq
+# Validate distro name (alphanumeric, dashes, underscores, dots only)
+index::validate_name(){
+  local name="$1"
   
-  index::init_local
-  
-  # Verify source exists
-  if ! index::get_distro "$source_id" >/dev/null 2>&1; then
-    err "Source distro not found: $source_id"
+  if [[ -z "$name" ]]; then
+    err "Name cannot be empty"
     return 1
   fi
   
-  # Add to local index
-  local tmp_file
-  tmp_file=$(mktemp)
-  jq --arg id "$custom_id" \
-     --arg source "$source_id" \
-     --arg name "$custom_name" \
-     '.custom[$id] = {name: $name, source: $source, arch: "all"}' \
-     "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
+  if [[ ! "$name" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    err "Invalid name: '$name' (only alphanumeric, dashes, underscores, and dots allowed)"
+    return 1
+  fi
   
-  msg "Added custom distro: $custom_id -> $source_id"
+  if [[ ${#name} -gt 64 ]]; then
+    err "Name too long: '$name' (max 64 characters)"
+    return 1
+  fi
+  
+  return 0
 }
 
 # Get URL for specific architecture
@@ -209,19 +222,50 @@ index::get_url_for_arch(){
 }
 
 # Store distro metadata in local index
+# Args: distro_id, file_path, [base_distro], [addons_json_array], [type]
 index::store_downloaded(){
-  local distro_id="$1" file_path="$2"
-  require_jq
+  local distro_id="$1" 
+  local file_path="$2"
+  local base_distro="${3:-}"
+  local addons_json="${4:-[]}"
+  local distro_type="${5:-base}"
   
+  require_jq
   index::init_local
+  
+  # Validate file exists and has content
+  if [[ ! -f "$file_path" ]]; then
+    err "Cannot store: file does not exist: $file_path"
+    return 1
+  fi
+  
+  if [[ ! -s "$file_path" ]]; then
+    err "Cannot store: file is empty: $file_path"
+    return 1
+  fi
   
   local tmp_file
   tmp_file=$(mktemp)
-  jq --arg id "$distro_id" \
-     --arg path "$file_path" \
-     --arg date "$(date -Iseconds)" \
-     '.distros[$id] = {file: $path, downloaded: $date}' \
-     "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
+  
+  if [[ -n "$base_distro" ]]; then
+    # Store custom distro with base_distro and addons
+    jq --arg id "$distro_id" \
+       --arg path "$file_path" \
+       --arg date "$(date -Iseconds)" \
+       --arg base "$base_distro" \
+       --argjson addons "$addons_json" \
+       --arg type "$distro_type" \
+       '.distros[$id] = {file: $path, downloaded: $date, base_distro: $base, addons: $addons, type: $type}' \
+       "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
+  else
+    # Store base distro
+    jq --arg id "$distro_id" \
+       --arg path "$file_path" \
+       --arg date "$(date -Iseconds)" \
+       --arg type "$distro_type" \
+       '.distros[$id] = {file: $path, downloaded: $date, type: $type}' \
+       "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
+  fi
 }
 
 # Get local path for downloaded distro

@@ -11,8 +11,9 @@ distro::download(){
   local addons=("$@")
   
   ensure_dirs
+  require_jq
   
-  # Get distro info
+  # Get distro info from remote index
   local distro_data
   distro_data=$(index::get_distro "$distro_id")
   
@@ -26,63 +27,111 @@ distro::download(){
   local actual_distro_id
   actual_distro_id=$(echo "$distro_data" | jq -r '.id')
   
+  # Determine final distro ID
+  local final_id="$distro_id"
+  local is_custom=false
+  
+  if [[ -n "$custom_name" ]]; then
+    # Validate custom name
+    if ! index::validate_name "$custom_name"; then
+      return 1
+    fi
+    
+    final_id="$custom_name"
+    is_custom=true
+    
+    # Check if name already exists
+    index::init_local
+    local exists
+    exists=$(jq -r ".distros[\"$final_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
+    if [[ -n "$exists" ]]; then
+      err "Name already exists: $final_id"
+      info "Use a different name or clean existing: ${C_BOLD}penv clean $final_id${C_RESET}"
+      return 1
+    fi
+  fi
+  
   # If addons requested, custom name is required
-  if [[ ${#addons[@]} -gt 0 ]] && [[ -z "$custom_name" ]]; then
+  if [[ ${#addons[@]} -gt 0 ]] && [[ "$is_custom" == "false" ]]; then
     err "Custom name (-n) is required when using addons"
     info "Usage: penv download $distro_id -n <custom-name> -a <addon>"
     return 1
   fi
   
-  # Get URL for current architecture
-  local url
-  url=$(index::get_url_for_arch "$distro_data" "$ARCH")
-  
-  if [[ -z "$url" ]]; then
-    return 1
+  # Check if base distro already downloaded (for reuse)
+  local base_distro_file=""
+  if [[ "$is_custom" == "true" ]]; then
+    base_distro_file=$(index::get_local_path "$actual_distro_id")
+    
+    if [[ -n "$base_distro_file" ]] && [[ -f "$base_distro_file" ]]; then
+      msg "Reusing existing base distro: $actual_distro_id"
+    else
+      base_distro_file=""
+      if [[ ${#addons[@]} -gt 0 ]]; then
+        info "Base distro not found locally, downloading: $actual_distro_id"
+      fi
+    fi
   fi
   
-  # Determine final distro ID
-  local final_id="$distro_id"
-  if [[ -n "$custom_name" ]]; then
-    final_id="$custom_name"
-    index::init_local
-    # Check if custom name already exists in distros or custom
-    local exists_in_distros exists_in_custom
-    exists_in_distros=$(jq -r ".distros[\"$final_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
-    exists_in_custom=$(jq -r ".custom[\"$final_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
-    if [[ -n "$exists_in_distros" ]] || [[ -n "$exists_in_custom" ]]; then
-      err "Custom name already exists: $final_id"
+  # Download base distro if needed
+  local cache_file
+  if [[ -n "$base_distro_file" ]]; then
+    # Reuse existing download
+    cache_file="$base_distro_file"
+  else
+    # Get URL for current architecture
+    local url
+    url=$(index::get_url_for_arch "$distro_data" "$ARCH")
+    
+    if [[ -z "$url" ]]; then
       return 1
     fi
+    
+    # Download to cache (use actual_distro_id for base downloads, final_id for simple downloads)
+    if [[ "$is_custom" == "true" ]] && [[ ${#addons[@]} -gt 0 ]]; then
+      cache_file="$CACHE_DIR/${actual_distro_id}.tar.gz"
+    else
+      cache_file="$CACHE_DIR/${final_id}.tar.gz"
+    fi
+    
+    download_file "$url" "$cache_file" || return 1
+    
+    # Store base distro in index if it was the actual distro ID
+    if [[ "$is_custom" == "true" ]] && [[ ${#addons[@]} -gt 0 ]]; then
+      index::store_downloaded "$actual_distro_id" "$cache_file"
+    fi
   fi
   
-  # Download to cache
-  local cache_file="$CACHE_DIR/${final_id}.tar.gz"
-  
-  download_file "$url" "$cache_file" || return 1
-  
-  # If addons requested, apply them
+  # If addons requested, apply them to create custom distro
   if [[ ${#addons[@]} -gt 0 ]]; then
     info "Applying ${#addons[@]} addon(s)..."
-    cache_file=$(distro::apply_addons "$cache_file" "$final_id" "$actual_distro_id" "${addons[@]}") || return 1
-  fi
-  
-  # Store in local index
-  index::store_downloaded "$final_id" "$cache_file"
-  
-  # If custom name, also create link
-  if [[ -n "$custom_name" ]]; then
-    local distro_name
-    distro_name=$(echo "$distro_data" | jq -r '.name')
-    local addon_list=""
-    if [[ ${#addons[@]} -gt 0 ]]; then
-      addon_list=" with addons: ${addons[*]}"
+    
+    # Build JSON array for addons
+    local addons_json
+    addons_json=$(printf '%s\n' "${addons[@]}" | jq -R . | jq -s .)
+    
+    local custom_cache_file
+    custom_cache_file=$(distro::apply_addons "$cache_file" "$final_id" "$actual_distro_id" "${addons[@]}") || return 1
+    
+    # Store custom distro with metadata
+    index::store_downloaded "$final_id" "$custom_cache_file" "$actual_distro_id" "$addons_json" "custom"
+    
+    msg "Custom distro created: ${C_BOLD}$final_id${C_RESET}"
+    info "Base: $actual_distro_id + addons: ${addons[*]}"
+    info "File: $custom_cache_file"
+  else
+    # Simple download (no addons)
+    if [[ "$is_custom" != "true" ]]; then
+      # Store base distro
+      index::store_downloaded "$final_id" "$cache_file"
+    else
+      # Custom name but no addons - just an alias
+      index::store_downloaded "$final_id" "$cache_file" "$actual_distro_id" "[]" "alias"
     fi
-    index::add_custom "$custom_name" "$actual_distro_id" "$distro_name$addon_list"
+    
+    msg "Distro downloaded: ${C_BOLD}$final_id${C_RESET}"
+    info "File: $cache_file"
   fi
-  
-  msg "Distro downloaded: ${C_BOLD}$final_id${C_RESET}"
-  info "File: $cache_file"
 }
 
 # Apply addons to a distro
@@ -197,14 +246,28 @@ distro::list_downloaded(){
     return
   fi
   
-  jq -r '.distros | to_entries[] | "\(.key)|\(.value.file)|\(.value.downloaded)"' "$LOCAL_INDEX" 2>/dev/null | \
-  while IFS='|' read -r id file date; do
+  jq -r '.distros | to_entries[] | "\(.key)|\(.value.file)|\(.value.type // "base")|\(.value.base_distro // "")|\(.value.addons // [])"' "$LOCAL_INDEX" 2>/dev/null | \
+  while IFS='|' read -r id file distro_type base_distro addons_json; do
     if [[ -f "$file" ]]; then
       local size
       size=$(du -sh "$file" 2>/dev/null | cut -f1)
-      printf "  ${C_GREEN}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (%s)${C_RESET}\n" "$id" "$size" "$(basename "$file")"
+      
+      # Format display based on type
+      case "$distro_type" in
+        custom)
+          local addons_list
+          addons_list=$(echo "$addons_json" | jq -r 'join(", ")' 2>/dev/null)
+          printf "  ${C_CYAN}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (base: %s + %s)${C_RESET}\n" "$id" "$size" "$base_distro" "$addons_list"
+          ;;
+        alias)
+          printf "  ${C_MAGENTA}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (alias of %s)${C_RESET}\n" "$id" "$size" "$base_distro"
+          ;;
+        *)
+          printf "  ${C_GREEN}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s${C_RESET}\n" "$id" "$size"
+          ;;
+      esac
     else
-      printf "  ${C_RED}!${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}(file missing)${C_RESET}\n" "$id"
+      printf "  ${C_RED}!${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}(file missing: %s)${C_RESET}\n" "$id" "$file"
     fi
   done
   
@@ -216,14 +279,44 @@ distro::clean(){
   local distro_id="$1"
   require_jq
   
+  # Validate name
+  if ! index::validate_name "$distro_id"; then
+    return 1
+  fi
+  
   index::init_local
   
-  local file_path
+  local file_path distro_type
   file_path=$(index::get_local_path "$distro_id")
+  distro_type=$(jq -r ".distros[\"$distro_id\"].type // \"base\"" "$LOCAL_INDEX" 2>/dev/null)
   
   if [[ -z "$file_path" ]]; then
     err "Distro not found in local index: $distro_id"
+    info "Use ${C_BOLD}penv list -d${C_RESET} to see downloaded distros"
     return 1
+  fi
+  
+  # Check if this is a base distro used by custom distros
+  if [[ "$distro_type" == "base" ]]; then
+    local dependents
+    dependents=$(jq -r ".distros | to_entries[] | select(.value.base_distro == \"$distro_id\") | .key" "$LOCAL_INDEX" 2>/dev/null)
+    
+    if [[ -n "$dependents" ]]; then
+      warn "This base distro is used by custom distros:"
+      echo "$dependents" | while read -r dep; do
+        echo -e "    ${C_CYAN}$dep${C_RESET}"
+      done
+      echo
+      read -p "$(echo -e "${C_YELLOW}Remove anyway? Custom distros will still work. (y/N):${C_RESET} ")" yn
+      
+      case "$yn" in
+        [Yy]) ;;
+        *) 
+          info "Aborted"
+          return 0
+          ;;
+      esac
+    fi
   fi
   
   if [[ -f "$file_path" ]]; then
@@ -264,7 +357,7 @@ distro::clean_all(){
   case "$yn" in
     [Yy])
       rm -rf "${CACHE_DIR:?}/"*
-      echo '{"distros":{},"custom":{}}' > "$LOCAL_INDEX"
+      echo '{"distros":{}}' > "$LOCAL_INDEX"
       msg "Cache cleared"
       ;;
     *)

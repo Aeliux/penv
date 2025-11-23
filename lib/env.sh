@@ -34,10 +34,16 @@ env::create(){
     return 1
   fi
   
+  # Validate environment name
+  if ! index::validate_name "$env_name"; then
+    return 1
+  fi
+  
   # Check if env already exists
   local env_root="$ENVS_DIR/$env_name"
   if [[ -d "$env_root" ]]; then
     err "Environment already exists: $env_name"
+    info "Delete it first: ${C_BOLD}penv delete $env_name${C_RESET}"
     return 1
   fi
   
@@ -48,6 +54,13 @@ env::create(){
   if [[ -z "$distro_file" ]] || [[ ! -f "$distro_file" ]]; then
     err "Distro not downloaded: $distro_id"
     info "Download it first: ${C_BOLD}penv download $distro_id${C_RESET}"
+    return 1
+  fi
+  
+  # Validate distro file
+  if [[ ! -s "$distro_file" ]]; then
+    err "Distro file is empty or corrupted: $distro_file"
+    info "Re-download it: ${C_BOLD}penv clean $distro_id && penv download $distro_id${C_RESET}"
     return 1
   fi
   
@@ -75,9 +88,14 @@ env::shell(){
   shift
   
   if [[ -z "$env_name" ]]; then
-    err "Usage: penv shell <name>"
+    err "Usage: penv shell <name> [command...]"
     info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
+  fi
+  
+  # Validate environment name
+  if ! index::validate_name "$env_name"; then
+    return 1
   fi
   
   local env_root="$ENVS_DIR/$env_name"
@@ -86,6 +104,13 @@ env::shell(){
     err "Environment not found: $env_name"
     info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
+  fi
+  
+  # Sanity check: verify environment has basic structure
+  if [[ ! -d "$env_root/bin" ]] && [[ ! -d "$env_root/usr" ]]; then
+    err "Environment appears corrupted (missing /bin and /usr directories)"
+    info "Recreate it: ${C_BOLD}penv delete $env_name && penv create $env_name <distro>${C_RESET}"
+    return 1
   fi
   
   require_proot
@@ -110,13 +135,20 @@ env::delete(){
   
   if [[ -z "$env_name" ]]; then
     err "Usage: penv delete <name>"
+    info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
+  fi
+  
+  # Validate environment name
+  if ! index::validate_name "$env_name"; then
+    return 1
   fi
   
   local env_root="$ENVS_DIR/$env_name"
   
   if [[ ! -d "$env_root" ]]; then
     err "Environment not found: $env_name"
+    info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
   fi
   
