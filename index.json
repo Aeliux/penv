@@ -1,0 +1,71 @@
+{
+  "distros": {
+    "ubuntu-24.04-vanilla": {
+      "id": "ubuntu-24.04-vanilla",
+      "name": "Ubuntu 24.04 vanilla",
+      "description": "Ubuntu 24.04 base rootfs",
+      "urls": [
+        {
+          "arch": "amd64",
+          "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz"
+        }
+      ]
+    },
+    "ubuntu-24-vanilla": {
+      "id": "ubuntu-24.04-vanilla",
+      "name": "Ubuntu 24.04 vanilla",
+      "description": "Ubuntu 24.04 base rootfs",
+      "urls": [
+        {
+          "arch": "amd64",
+          "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz"
+        }
+      ]
+    },
+    "ubuntu-vanilla": {
+      "id": "ubuntu-24.04-vanilla",
+      "name": "Ubuntu 24.04 vanilla",
+      "description": "Ubuntu 24.04 base rootfs",
+      "urls": [
+        {
+          "arch": "amd64",
+          "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz"
+        }
+      ]
+    },
+    "alpine-3.22-vanilla": {
+      "id": "alpine-3.22-vanilla",
+      "name": "Alpine 3.22 vanilla",
+      "description": "Alpine linux 3.22 mini rootfs",
+      "urls": [
+        {
+          "arch": "amd64",
+          "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz"
+        }
+      ]
+    },
+    "alpine-3-vanilla": {
+      "id": "alpine-3.22-vanilla",
+      "name": "Alpine 3.22 vanilla",
+      "description": "Alpine linux 3.22 mini rootfs",
+      "urls": [
+        {
+          "arch": "amd64",
+          "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz"
+        }
+      ]
+    },
+    "alpine-vanilla": {
+      "id": "alpine-3.22-vanilla",
+      "name": "Alpine 3.22 vanilla",
+      "description": "Alpine linux 3.22 mini rootfs",
+      "urls": [
+        {
+          "arch": "amd64",
+          "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz"
+        }
+      ]
+    }
+  },
+  "addons": {}
+}
