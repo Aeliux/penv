@@ -49,11 +49,11 @@ elif command -v wget >/dev/null 2>&1; then
 fi
 
 # -------- helpers --------
-msg(){ printf "${C_GREEN}${ICON_CHECK}${C_RESET} %s\n" "$*"; }
-info(){ printf "${C_CYAN}${ICON_INFO}${C_RESET} %s\n" "$*"; }
-warn(){ printf "${C_YELLOW}⚠${C_RESET}  %s\n" "$*"; }
-err(){ printf "${C_RED}${ICON_CROSS} ERROR:${C_RESET} %s\n" "$*" >&2; }
-header(){ printf "\n${C_BOLD}${C_CYAN}%s${C_RESET}\n" "$*"; }
+msg(){ echo -e "${C_GREEN}${ICON_CHECK}${C_RESET} $*"; }
+info(){ echo -e "${C_CYAN}${ICON_INFO}${C_RESET} $*"; }
+warn(){ echo -e "${C_YELLOW}⚠${C_RESET}  $*"; }
+err(){ echo -e "${C_RED}${ICON_CROSS} ERROR:${C_RESET} $*" >&2; }
+header(){ echo -e "\n${C_BOLD}${C_CYAN}$*${C_RESET}"; }
 ensure_dirs(){
   mkdir -p "$CACHE_DIR" "$ENVS_DIR" "$BIN_DIR"
 }
@@ -76,31 +76,29 @@ require_proot(){
   fi
 }
 usage(){
-  cat <<USAGE
-${C_BOLD}${C_MAGENTA}penv${C_RESET} - proot environment manager
-
-${C_BOLD}USAGE:${C_RESET}
-  ${C_GREEN}penv init${C_RESET}                    Initialize penv
-  ${C_GREEN}penv download${C_RESET} ${C_YELLOW}<id>${C_RESET}          Download a distro (use -l to list available)
-  ${C_GREEN}penv download -l${C_RESET}             List all available distros
-  ${C_GREEN}penv create${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}<id>${C_RESET}      Create new environment (use -l to list distros)
-  ${C_GREEN}penv create -l${C_RESET}               List available distros for creation
-  ${C_GREEN}penv shell${C_RESET} ${C_YELLOW}<name>${C_RESET}            Enter environment shell
-  ${C_GREEN}penv list${C_RESET}                    List all environments
-  ${C_GREEN}penv delete${C_RESET} ${C_YELLOW}<name>${C_RESET}          Delete an environment
-  ${C_GREEN}penv cache${C_RESET}                   Show cached downloads
-  ${C_GREEN}penv clean${C_RESET} ${C_YELLOW}<id>${C_RESET}             Remove cached distro
-  ${C_GREEN}penv clean --all${C_RESET}            Remove all cached downloads
-
-${C_BOLD}EXAMPLES:${C_RESET}
-  penv download ubuntu-24.04
-  penv create myenv ubuntu-24.04
-  penv shell myenv
-  penv delete myenv
-
-${C_BOLD}ALIASES:${C_RESET}
-  ${C_DIM}enter → shell, available → download -l, list-envs → list${C_RESET}
-USAGE
+  echo -e "${C_BOLD}${C_MAGENTA}penv${C_RESET} - proot environment manager"
+  echo
+  echo -e "${C_BOLD}USAGE:${C_RESET}"
+  echo -e "  ${C_GREEN}penv init${C_RESET}                    Initialize penv"
+  echo -e "  ${C_GREEN}penv download${C_RESET} ${C_YELLOW}<id>${C_RESET}          Download a distro (use -l to list available)"
+  echo -e "  ${C_GREEN}penv download -l${C_RESET}             List all available distros"
+  echo -e "  ${C_GREEN}penv create${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}<id>${C_RESET}      Create new environment (use -l to list distros)"
+  echo -e "  ${C_GREEN}penv create -l${C_RESET}               List available distros for creation"
+  echo -e "  ${C_GREEN}penv shell${C_RESET} ${C_YELLOW}<name>${C_RESET}            Enter environment shell"
+  echo -e "  ${C_GREEN}penv list${C_RESET}                    List all environments"
+  echo -e "  ${C_GREEN}penv delete${C_RESET} ${C_YELLOW}<name>${C_RESET}          Delete an environment"
+  echo -e "  ${C_GREEN}penv cache${C_RESET}                   Show cached downloads"
+  echo -e "  ${C_GREEN}penv clean${C_RESET} ${C_YELLOW}<id>${C_RESET}             Remove cached distro"
+  echo -e "  ${C_GREEN}penv clean --all${C_RESET}            Remove all cached downloads"
+  echo
+  echo -e "${C_BOLD}EXAMPLES:${C_RESET}"
+  echo "  penv download ubuntu-24.04"
+  echo "  penv create myenv ubuntu-24.04"
+  echo "  penv shell myenv"
+  echo "  penv delete myenv"
+  echo
+  echo -e "${C_BOLD}ALIASES:${C_RESET}"
+  echo -e "  ${C_DIM}enter → shell, available → download -l, list-envs → list${C_RESET}"
 }
 
 distro_resolve(){
@@ -144,7 +142,7 @@ download_url(){
     return 0
   fi
   info "Downloading: $(basename "$out")"
-  printf "${C_DIM}Source: %s${C_RESET}\n" "$url"
+  echo -e "${C_DIM}Source: $url${C_RESET}"
   if [[ "$url" =~ ^file:// ]]; then
     cp -n "${url#file://}" "$out"
     msg "File copied successfully"
@@ -194,8 +192,8 @@ list_envs(){
       printf "  ${C_GREEN}●${C_RESET} ${C_BOLD}%-20s${C_RESET} ${C_DIM}(%s)${C_RESET}\n" "$name" "$size"
     done
   else
-    printf "  ${C_DIM}No environments created yet.${C_RESET}\n"
-    printf "  ${C_DIM}Use: penv create <name> <distro-id>${C_RESET}\n"
+    echo -e "  ${C_DIM}No environments created yet.${C_RESET}"
+    echo -e "  ${C_DIM}Use: penv create <name> <distro-id>${C_RESET}"
   fi
   echo
 }
@@ -210,7 +208,7 @@ list_cached(){
       printf "  ${C_CYAN}▸${C_RESET} ${C_BOLD}%-40s${C_RESET} ${C_DIM}(%s)${C_RESET}\n" "$name" "$size"
     done
   else
-    printf "  ${C_DIM}No cached downloads.${C_RESET}\n"
+    echo -e "  ${C_DIM}No cached downloads.${C_RESET}"
   fi
   echo
 }
@@ -219,20 +217,20 @@ list_cached(){
 cmd_init(){
   ensure_dirs
   header "${ICON_PACKAGE} penv initialized successfully!"
-  printf "  ${C_CYAN}Cache:${C_RESET}      %s\n" "$CACHE_DIR"
-  printf "  ${C_CYAN}Envs:${C_RESET}       %s\n" "$ENVS_DIR"
+  echo -e "  ${C_CYAN}Cache:${C_RESET}      $CACHE_DIR"
+  echo -e "  ${C_CYAN}Envs:${C_RESET}       $ENVS_DIR"
   echo
   if [[ -z "$DL_TOOL" ]]; then
     warn "No download tool found. Install one of:"
-    printf "    ${C_DIM}• aria2c (recommended)${C_RESET}\n"
-    printf "    ${C_DIM}• curl${C_RESET}\n"
-    printf "    ${C_DIM}• wget${C_RESET}\n"
+    echo -e "    ${C_DIM}• aria2c (recommended)${C_RESET}"
+    echo -e "    ${C_DIM}• curl${C_RESET}"
+    echo -e "    ${C_DIM}• wget${C_RESET}"
   else
     msg "Downloader: $DL_TOOL"
   fi
   if ! command -v proot >/dev/null 2>&1; then
     warn "proot not found. Install it:"
-    printf "    ${C_DIM}sudo apt update && sudo apt install -y proot${C_RESET}\n"
+    echo -e "    ${C_DIM}sudo apt update && sudo apt install -y proot${C_RESET}"
   else
     msg "proot: $(command -v proot)"
   fi
@@ -242,7 +240,7 @@ cmd_init(){
 cmd_available(){
   header "${ICON_DOWNLOAD} Available Distributions"
   printf "  ${C_BOLD}${C_CYAN}%-20s${C_RESET}  ${C_BOLD}${C_DIM}%s${C_RESET}\n" "ID" "SOURCE URL"
-  printf "  ${C_DIM}%s${C_RESET}\n" "$(printf '%.0s─' {1..80})"
+  echo -e "  ${C_DIM}$(printf '%.0s─' {1..80})${C_RESET}"
   for k in "${!DISTROS[@]}"; do
     printf "  ${C_GREEN}%-20s${C_RESET}  ${C_DIM}%s${C_RESET}\n" "$k" "${DISTROS[$k]}"
   done | sort
@@ -260,7 +258,7 @@ cmd_download(){
   fi
   if [[ $# -lt 1 ]]; then
     err "Usage: penv download <distro-id>"
-    printf "       penv download -l  ${C_DIM}(list available distros)${C_RESET}\n"
+    echo -e "       penv download -l  ${C_DIM}(list available distros)${C_RESET}"
     exit 2
   fi
   local key="$1"
@@ -287,7 +285,7 @@ cmd_create(){
   local name="" distro_key=""
   if [[ $# -lt 2 ]]; then
     err "Usage: penv create <name> <distro-id>"
-    printf "       penv create -l  ${C_DIM}(list available distros)${C_RESET}\n"
+    echo -e "       penv create -l  ${C_DIM}(list available distros)${C_RESET}"
     exit 2
   fi
   
@@ -360,7 +358,7 @@ cmd_shell(){
 
   require_proot
   header "${ICON_SHELL} Entering environment: $name"
-  printf "  ${C_DIM}Rootfs: %s${C_RESET}\n" "$root"
+  echo -e "  ${C_DIM}Rootfs: $root${C_RESET}"
   echo
 
   # Build command as an array so arguments are preserved correctly
@@ -391,8 +389,8 @@ cmd_delete(){
   local size
   size=$(du -sh "$root" 2>/dev/null | cut -f1)
   warn "About to delete environment: ${C_BOLD}$name${C_RESET} (${size})"
-  printf "  ${C_DIM}Location: %s${C_RESET}\n" "$root"
-  read -p "$(printf "${C_YELLOW}Are you sure? (y/N):${C_RESET} ")" yn
+  echo -e "  ${C_DIM}Location: $root${C_RESET}"
+  read -p "$(echo -e "${C_YELLOW}Are you sure? (y/N):${C_RESET} ")" yn
   case "$yn" in
     [Yy])
       rm -rf "$root"
@@ -410,7 +408,7 @@ cmd_cache(){ list_cached; }
 cmd_clean(){
   if [[ $# -lt 1 ]]; then
     err "Usage: penv clean <distro-id>"
-    printf "       penv clean --all  ${C_DIM}(remove all cached downloads)${C_RESET}\n"
+    echo -e "       penv clean --all  ${C_DIM}(remove all cached downloads)${C_RESET}"
     exit 2
   fi
   
@@ -423,7 +421,7 @@ cmd_clean(){
     local total_size
     total_size=$(du -sh "$CACHE_DIR" 2>/dev/null | cut -f1)
     warn "About to delete all cached downloads (${total_size})"
-    read -p "$(printf "${C_YELLOW}Are you sure? (y/N):${C_RESET} ")" yn
+    read -p "$(echo -e "${C_YELLOW}Are you sure? (y/N):${C_RESET} ")" yn
     case "$yn" in
       [Yy])
         rm -rf "${CACHE_DIR:?}/"*
