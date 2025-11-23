@@ -166,7 +166,7 @@ distros.append(
 
 # Penv-built distros
 
-release = "1.0fix3"
+release = "1.1"
 
 # Debian versions
 add_penv_distro(family="debian", distro_base="debian", version="11", codename="bullseye", release=release)
