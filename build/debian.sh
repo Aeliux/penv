@@ -1,12 +1,14 @@
-#!/bin/sh
+#!/bin/env bash
 
-set -e
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
 
 # Configuration
 DEBIAN_RELEASE="${DEBIAN_RELEASE:-bookworm}"
 DEBIAN_ARCH="${DEBIAN_ARCH:-amd64}"
-ROOTFS_DIR="${ROOTFS_DIR:-./out/debian-rootfs}"
-OUTPUT_FILE="${OUTPUT_FILE:-debian-${DEBIAN_RELEASE}-${DEBIAN_ARCH}-rootfs.tar.gz}"
+ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/debian-rootfs}"
+OUTPUT_FILE="${OUTPUT_FILE:-output/debian-${DEBIAN_RELEASE}-${DEBIAN_ARCH}-rootfs.tar.gz}"
 MIRROR="${MIRROR:-http://deb.debian.org/debian}"
 
 echo "Building Debian ${DEBIAN_RELEASE} (${DEBIAN_ARCH}) rootfs..."
@@ -61,6 +63,22 @@ echo "Cleaning up rootfs..."
 rm -rf "$ROOTFS_DIR"/var/cache/apt/archives/*.deb
 rm -rf "$ROOTFS_DIR"/var/lib/apt/lists/*
 rm -rf "$ROOTFS_DIR"/tmp/*
+
+# Apply penv patches
+echo "Applying penv patches..."
+helpers/setup.sh "$ROOTFS_DIR"
+
+# Copy debian startup script
+cp helpers/deb-start.sh "$ROOTFS_DIR"/penv/startup.d/debian.sh
+chmod +x "$ROOTFS_DIR"/penv/startup.d/debian.sh
+
+# Apply Debian-specific patches
+echo "Applying Debian patches..."
+if [ -f helpers/patches/debian.sh ]; then
+    cp helpers/patches/debian.sh "$ROOTFS_DIR"/tmp/debian.sh
+    chroot "$ROOTFS_DIR" /bin/sh /tmp/debian.sh
+    rm "$ROOTFS_DIR"/tmp/debian.sh
+fi
 
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
