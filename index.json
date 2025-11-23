@@ -72,362 +72,362 @@
         }
       ]
     },
-    "debian-11-1.0fix3": {
-      "id": "debian-11-1.0fix3",
-      "name": "Debian 11 1.0fix3",
-      "description": "Debian 11 (bullseye) penv v1.0fix3 rootfs",
+    "debian-11-1.1": {
+      "id": "debian-11-1.1",
+      "name": "Debian 11 1.1",
+      "description": "Debian 11 (bullseye) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-amd64-rootfs.tar.gz",
-          "sha256": "a4b01c3eaaa3c88b6adcce67625f37d14b0b21e8d8ce0422c517dd2a092a7aa3"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-amd64-rootfs.tar.gz",
+          "sha256": "49c568ef55478edd02c62ca5b70d3f6d2dc01fed3488044055e628e668930a93"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-i386-rootfs.tar.gz",
-          "sha256": "92a6eda77b8e543ea3cb9e700ff62b7a5093a44b137383ec378022f3e4797e7a"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-i386-rootfs.tar.gz",
+          "sha256": "de741f2d7c2c4f9ad19ecd8bd30d341b24193735e045c1bf1c4cc6aa422e3b61"
         },
         {
           "arch": "arm64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-arm64-rootfs.tar.gz",
-          "sha256": "6fbe647c172df24efed676a2c8c92fb6fc4f1dce9cf94cc60b17d908ee9d83ed"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-arm64-rootfs.tar.gz",
+          "sha256": "3655bd334c77e89fd9ec6fbf8223cb9b0f8b58551802009defbb464de5bbbb5e"
         },
         {
           "arch": "armhf",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-armhf-rootfs.tar.gz",
-          "sha256": "9b270018810a01dfc7a02fdf83668099721577e4916ae557d5af325742b65a31"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-armhf-rootfs.tar.gz",
+          "sha256": "1a42e66ba8599e9492f5813c608d2b9337ef57865b19d9b85c0c5da6a4573598"
         }
       ]
     },
     "debian-11": {
-      "id": "debian-11-1.0fix3",
-      "name": "Debian 11 1.0fix3",
-      "description": "Debian 11 (bullseye) penv v1.0fix3 rootfs",
+      "id": "debian-11-1.1",
+      "name": "Debian 11 1.1",
+      "description": "Debian 11 (bullseye) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-amd64-rootfs.tar.gz",
-          "sha256": "a4b01c3eaaa3c88b6adcce67625f37d14b0b21e8d8ce0422c517dd2a092a7aa3"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-amd64-rootfs.tar.gz",
+          "sha256": "49c568ef55478edd02c62ca5b70d3f6d2dc01fed3488044055e628e668930a93"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-i386-rootfs.tar.gz",
-          "sha256": "92a6eda77b8e543ea3cb9e700ff62b7a5093a44b137383ec378022f3e4797e7a"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-i386-rootfs.tar.gz",
+          "sha256": "de741f2d7c2c4f9ad19ecd8bd30d341b24193735e045c1bf1c4cc6aa422e3b61"
         },
         {
           "arch": "arm64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-arm64-rootfs.tar.gz",
-          "sha256": "6fbe647c172df24efed676a2c8c92fb6fc4f1dce9cf94cc60b17d908ee9d83ed"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-arm64-rootfs.tar.gz",
+          "sha256": "3655bd334c77e89fd9ec6fbf8223cb9b0f8b58551802009defbb464de5bbbb5e"
         },
         {
           "arch": "armhf",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-armhf-rootfs.tar.gz",
-          "sha256": "9b270018810a01dfc7a02fdf83668099721577e4916ae557d5af325742b65a31"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-armhf-rootfs.tar.gz",
+          "sha256": "1a42e66ba8599e9492f5813c608d2b9337ef57865b19d9b85c0c5da6a4573598"
         }
       ]
     },
-    "debian-12-1.0fix3": {
-      "id": "debian-12-1.0fix3",
-      "name": "Debian 12 1.0fix3",
-      "description": "Debian 12 (bookworm) penv v1.0fix3 rootfs",
+    "debian-12-1.1": {
+      "id": "debian-12-1.1",
+      "name": "Debian 12 1.1",
+      "description": "Debian 12 (bookworm) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-amd64-rootfs.tar.gz",
-          "sha256": "362f665b321486edf2a8ad62664328d4d01f95b721e4e5af4255353fe00bff08"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-amd64-rootfs.tar.gz",
+          "sha256": "675b1f9d9bc54255249c3db4d845e3902e523169d28be8210d90c37ef62f89ef"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-i386-rootfs.tar.gz",
-          "sha256": "2c61462bc32985964145c2c8ae76fa0f4a8f05897026bad05b3d56b2a71ceb2c"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-i386-rootfs.tar.gz",
+          "sha256": "60df4283a4a3f4f274b198310d5eaa256ae0e9ce207514d765e202a147dbb7ed"
         },
         {
           "arch": "arm64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-arm64-rootfs.tar.gz",
-          "sha256": "77d450ee78c6e184928c1b42ba412ea2a62ccd5fa78310858fdb69ae740a53f7"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-arm64-rootfs.tar.gz",
+          "sha256": "ab1b4f2e37c0689ebcbbfaccace31db7496cd217ded1173f8d54ec76116dc288"
         },
         {
           "arch": "armhf",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-armhf-rootfs.tar.gz",
-          "sha256": "fffb3a88d58f923bb79afe671db16288191b082c29ca743e66a625d95fe99eed"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-armhf-rootfs.tar.gz",
+          "sha256": "595ccd01762bcb7db35fde70b2b01a247d13251a00edc8cacf41f141aaf07c46"
         }
       ]
     },
     "debian-12": {
-      "id": "debian-12-1.0fix3",
-      "name": "Debian 12 1.0fix3",
-      "description": "Debian 12 (bookworm) penv v1.0fix3 rootfs",
+      "id": "debian-12-1.1",
+      "name": "Debian 12 1.1",
+      "description": "Debian 12 (bookworm) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-amd64-rootfs.tar.gz",
-          "sha256": "362f665b321486edf2a8ad62664328d4d01f95b721e4e5af4255353fe00bff08"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-amd64-rootfs.tar.gz",
+          "sha256": "675b1f9d9bc54255249c3db4d845e3902e523169d28be8210d90c37ef62f89ef"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-i386-rootfs.tar.gz",
-          "sha256": "2c61462bc32985964145c2c8ae76fa0f4a8f05897026bad05b3d56b2a71ceb2c"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-i386-rootfs.tar.gz",
+          "sha256": "60df4283a4a3f4f274b198310d5eaa256ae0e9ce207514d765e202a147dbb7ed"
         },
         {
           "arch": "arm64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-arm64-rootfs.tar.gz",
-          "sha256": "77d450ee78c6e184928c1b42ba412ea2a62ccd5fa78310858fdb69ae740a53f7"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-arm64-rootfs.tar.gz",
+          "sha256": "ab1b4f2e37c0689ebcbbfaccace31db7496cd217ded1173f8d54ec76116dc288"
         },
         {
           "arch": "armhf",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-armhf-rootfs.tar.gz",
-          "sha256": "fffb3a88d58f923bb79afe671db16288191b082c29ca743e66a625d95fe99eed"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-armhf-rootfs.tar.gz",
+          "sha256": "595ccd01762bcb7db35fde70b2b01a247d13251a00edc8cacf41f141aaf07c46"
         }
       ]
     },
-    "debian-13-1.0fix3": {
-      "id": "debian-13-1.0fix3",
-      "name": "Debian 13 1.0fix3",
-      "description": "Debian 13 (trixie) penv v1.0fix3 rootfs",
+    "debian-13-1.1": {
+      "id": "debian-13-1.1",
+      "name": "Debian 13 1.1",
+      "description": "Debian 13 (trixie) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-amd64-rootfs.tar.gz",
-          "sha256": "4526e8c9daeec07149e170909c9ceb2bc4441d40b5f283c522fd6d95b8d9cbca"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-amd64-rootfs.tar.gz",
+          "sha256": "ab813b6d2b982e523df2a1fdf1e652af8803cacc1bbd98a29817faa813bf5e4b"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-i386-rootfs.tar.gz",
-          "sha256": "513ac1a870e4513cca2a7d51df18ab9f483e09a65f194427c50e092d662a2e38"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-i386-rootfs.tar.gz",
+          "sha256": "619990458d74b5ba7aba385b8e8c0881b87aae0d246032a9b34e44848f2dd8f1"
         },
         {
           "arch": "arm64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-arm64-rootfs.tar.gz",
-          "sha256": "9c252b804f310749628cbee6f91dc7683f90288dda648ddd3786ac3e7421394d"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-arm64-rootfs.tar.gz",
+          "sha256": "725ab6b049cfdfec457efebbd5b1a402e4e74f37ab094d7679391acf4e119811"
         },
         {
           "arch": "armhf",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-armhf-rootfs.tar.gz",
-          "sha256": "9c53fd7238b007fbfd91271def325a372e1bac82063d643ba7d6f8e36a70aa34"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-armhf-rootfs.tar.gz",
+          "sha256": "69dfca75f50e598cc7755fccc1434eafed2a8d3deba8b83dca33cbb207b58974"
         }
       ]
     },
     "debian-13": {
-      "id": "debian-13-1.0fix3",
-      "name": "Debian 13 1.0fix3",
-      "description": "Debian 13 (trixie) penv v1.0fix3 rootfs",
+      "id": "debian-13-1.1",
+      "name": "Debian 13 1.1",
+      "description": "Debian 13 (trixie) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-amd64-rootfs.tar.gz",
-          "sha256": "4526e8c9daeec07149e170909c9ceb2bc4441d40b5f283c522fd6d95b8d9cbca"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-amd64-rootfs.tar.gz",
+          "sha256": "ab813b6d2b982e523df2a1fdf1e652af8803cacc1bbd98a29817faa813bf5e4b"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-i386-rootfs.tar.gz",
-          "sha256": "513ac1a870e4513cca2a7d51df18ab9f483e09a65f194427c50e092d662a2e38"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-i386-rootfs.tar.gz",
+          "sha256": "619990458d74b5ba7aba385b8e8c0881b87aae0d246032a9b34e44848f2dd8f1"
         },
         {
           "arch": "arm64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-arm64-rootfs.tar.gz",
-          "sha256": "9c252b804f310749628cbee6f91dc7683f90288dda648ddd3786ac3e7421394d"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-arm64-rootfs.tar.gz",
+          "sha256": "725ab6b049cfdfec457efebbd5b1a402e4e74f37ab094d7679391acf4e119811"
         },
         {
           "arch": "armhf",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-armhf-rootfs.tar.gz",
-          "sha256": "9c53fd7238b007fbfd91271def325a372e1bac82063d643ba7d6f8e36a70aa34"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-armhf-rootfs.tar.gz",
+          "sha256": "69dfca75f50e598cc7755fccc1434eafed2a8d3deba8b83dca33cbb207b58974"
         }
       ]
     },
     "debian": {
-      "id": "debian-13-1.0fix3",
-      "name": "Debian 13 1.0fix3",
-      "description": "Debian 13 (trixie) penv v1.0fix3 rootfs",
+      "id": "debian-13-1.1",
+      "name": "Debian 13 1.1",
+      "description": "Debian 13 (trixie) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-amd64-rootfs.tar.gz",
-          "sha256": "4526e8c9daeec07149e170909c9ceb2bc4441d40b5f283c522fd6d95b8d9cbca"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-amd64-rootfs.tar.gz",
+          "sha256": "ab813b6d2b982e523df2a1fdf1e652af8803cacc1bbd98a29817faa813bf5e4b"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-i386-rootfs.tar.gz",
-          "sha256": "513ac1a870e4513cca2a7d51df18ab9f483e09a65f194427c50e092d662a2e38"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-i386-rootfs.tar.gz",
+          "sha256": "619990458d74b5ba7aba385b8e8c0881b87aae0d246032a9b34e44848f2dd8f1"
         },
         {
           "arch": "arm64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-arm64-rootfs.tar.gz",
-          "sha256": "9c252b804f310749628cbee6f91dc7683f90288dda648ddd3786ac3e7421394d"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-arm64-rootfs.tar.gz",
+          "sha256": "725ab6b049cfdfec457efebbd5b1a402e4e74f37ab094d7679391acf4e119811"
         },
         {
           "arch": "armhf",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-armhf-rootfs.tar.gz",
-          "sha256": "9c53fd7238b007fbfd91271def325a372e1bac82063d643ba7d6f8e36a70aa34"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-armhf-rootfs.tar.gz",
+          "sha256": "69dfca75f50e598cc7755fccc1434eafed2a8d3deba8b83dca33cbb207b58974"
         }
       ]
     },
-    "ubuntu-20.04-1.0fix3": {
-      "id": "ubuntu-20.04-1.0fix3",
-      "name": "Ubuntu 20.04 1.0fix3",
-      "description": "Ubuntu 20.04 (focal) penv v1.0fix3 rootfs",
+    "ubuntu-20.04-1.1": {
+      "id": "ubuntu-20.04-1.1",
+      "name": "Ubuntu 20.04 1.1",
+      "description": "Ubuntu 20.04 (focal) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-amd64-rootfs.tar.gz",
-          "sha256": "47b7008b23acb520b8ec4041bdfbe226e1fea135276fc8833347d939ddca94e5"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-amd64-rootfs.tar.gz",
+          "sha256": "0e6f0d4d69ede031764318120f5850df562028c592c95293ca3db4746027be36"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-i386-rootfs.tar.gz",
-          "sha256": "fe8f1f810f362e221bfd5b97a6308ab76b580c077833bb56010e653d9ccf5fec"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-i386-rootfs.tar.gz",
+          "sha256": "71f7754a67ee6f9eab7d7144567fa4b282613adc3c96cdcf6fb1917c8a93ce53"
         }
       ]
     },
     "ubuntu-20.04": {
-      "id": "ubuntu-20.04-1.0fix3",
-      "name": "Ubuntu 20.04 1.0fix3",
-      "description": "Ubuntu 20.04 (focal) penv v1.0fix3 rootfs",
+      "id": "ubuntu-20.04-1.1",
+      "name": "Ubuntu 20.04 1.1",
+      "description": "Ubuntu 20.04 (focal) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-amd64-rootfs.tar.gz",
-          "sha256": "47b7008b23acb520b8ec4041bdfbe226e1fea135276fc8833347d939ddca94e5"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-amd64-rootfs.tar.gz",
+          "sha256": "0e6f0d4d69ede031764318120f5850df562028c592c95293ca3db4746027be36"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-i386-rootfs.tar.gz",
-          "sha256": "fe8f1f810f362e221bfd5b97a6308ab76b580c077833bb56010e653d9ccf5fec"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-i386-rootfs.tar.gz",
+          "sha256": "71f7754a67ee6f9eab7d7144567fa4b282613adc3c96cdcf6fb1917c8a93ce53"
         }
       ]
     },
     "ubuntu-20": {
-      "id": "ubuntu-20.04-1.0fix3",
-      "name": "Ubuntu 20.04 1.0fix3",
-      "description": "Ubuntu 20.04 (focal) penv v1.0fix3 rootfs",
+      "id": "ubuntu-20.04-1.1",
+      "name": "Ubuntu 20.04 1.1",
+      "description": "Ubuntu 20.04 (focal) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-amd64-rootfs.tar.gz",
-          "sha256": "47b7008b23acb520b8ec4041bdfbe226e1fea135276fc8833347d939ddca94e5"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-amd64-rootfs.tar.gz",
+          "sha256": "0e6f0d4d69ede031764318120f5850df562028c592c95293ca3db4746027be36"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-i386-rootfs.tar.gz",
-          "sha256": "fe8f1f810f362e221bfd5b97a6308ab76b580c077833bb56010e653d9ccf5fec"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-i386-rootfs.tar.gz",
+          "sha256": "71f7754a67ee6f9eab7d7144567fa4b282613adc3c96cdcf6fb1917c8a93ce53"
         }
       ]
     },
-    "ubuntu-22.04-1.0fix3": {
-      "id": "ubuntu-22.04-1.0fix3",
-      "name": "Ubuntu 22.04 1.0fix3",
-      "description": "Ubuntu 22.04 (jammy) penv v1.0fix3 rootfs",
+    "ubuntu-22.04-1.1": {
+      "id": "ubuntu-22.04-1.1",
+      "name": "Ubuntu 22.04 1.1",
+      "description": "Ubuntu 22.04 (jammy) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-amd64-rootfs.tar.gz",
-          "sha256": "1d60695caca89c0c9f4dd1048ce5fef341cec6bca4a2006e2cfb59f7b16f262d"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-amd64-rootfs.tar.gz",
+          "sha256": "2831b1ac0221b2da0a74ca2ee33e3676fd945be9e93afc95baffae63881a4911"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-i386-rootfs.tar.gz",
-          "sha256": "7df0683a87ef02e7e03e383fb09638deb4423244bbdead5e66387a19c5c9c626"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-i386-rootfs.tar.gz",
+          "sha256": "7296612d8f1a18776df2b1f54002240bb55bc70dabab66d04419a741f7b241e4"
         }
       ]
     },
     "ubuntu-22.04": {
-      "id": "ubuntu-22.04-1.0fix3",
-      "name": "Ubuntu 22.04 1.0fix3",
-      "description": "Ubuntu 22.04 (jammy) penv v1.0fix3 rootfs",
+      "id": "ubuntu-22.04-1.1",
+      "name": "Ubuntu 22.04 1.1",
+      "description": "Ubuntu 22.04 (jammy) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-amd64-rootfs.tar.gz",
-          "sha256": "1d60695caca89c0c9f4dd1048ce5fef341cec6bca4a2006e2cfb59f7b16f262d"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-amd64-rootfs.tar.gz",
+          "sha256": "2831b1ac0221b2da0a74ca2ee33e3676fd945be9e93afc95baffae63881a4911"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-i386-rootfs.tar.gz",
-          "sha256": "7df0683a87ef02e7e03e383fb09638deb4423244bbdead5e66387a19c5c9c626"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-i386-rootfs.tar.gz",
+          "sha256": "7296612d8f1a18776df2b1f54002240bb55bc70dabab66d04419a741f7b241e4"
         }
       ]
     },
     "ubuntu-22": {
-      "id": "ubuntu-22.04-1.0fix3",
-      "name": "Ubuntu 22.04 1.0fix3",
-      "description": "Ubuntu 22.04 (jammy) penv v1.0fix3 rootfs",
+      "id": "ubuntu-22.04-1.1",
+      "name": "Ubuntu 22.04 1.1",
+      "description": "Ubuntu 22.04 (jammy) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-amd64-rootfs.tar.gz",
-          "sha256": "1d60695caca89c0c9f4dd1048ce5fef341cec6bca4a2006e2cfb59f7b16f262d"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-amd64-rootfs.tar.gz",
+          "sha256": "2831b1ac0221b2da0a74ca2ee33e3676fd945be9e93afc95baffae63881a4911"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-i386-rootfs.tar.gz",
-          "sha256": "7df0683a87ef02e7e03e383fb09638deb4423244bbdead5e66387a19c5c9c626"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-i386-rootfs.tar.gz",
+          "sha256": "7296612d8f1a18776df2b1f54002240bb55bc70dabab66d04419a741f7b241e4"
         }
       ]
     },
-    "ubuntu-24.04-1.0fix3": {
-      "id": "ubuntu-24.04-1.0fix3",
-      "name": "Ubuntu 24.04 1.0fix3",
-      "description": "Ubuntu 24.04 (noble) penv v1.0fix3 rootfs",
+    "ubuntu-24.04-1.1": {
+      "id": "ubuntu-24.04-1.1",
+      "name": "Ubuntu 24.04 1.1",
+      "description": "Ubuntu 24.04 (noble) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-amd64-rootfs.tar.gz",
-          "sha256": "10ea8552c7752b0391d8f4875a6fca7b2dad85ec62aa12c0b54b25eb9ddac0bf"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-amd64-rootfs.tar.gz",
+          "sha256": "d28c09f3616c70aae79e499b226e0e57f336629294bdb091280c13b087fd7b74"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-i386-rootfs.tar.gz",
-          "sha256": "d6165cf5bd6170c72f792a51091e3f69ec8d0e64b0c5d6584210d0c35015f74a"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
+          "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
       ]
     },
     "ubuntu-24.04": {
-      "id": "ubuntu-24.04-1.0fix3",
-      "name": "Ubuntu 24.04 1.0fix3",
-      "description": "Ubuntu 24.04 (noble) penv v1.0fix3 rootfs",
+      "id": "ubuntu-24.04-1.1",
+      "name": "Ubuntu 24.04 1.1",
+      "description": "Ubuntu 24.04 (noble) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-amd64-rootfs.tar.gz",
-          "sha256": "10ea8552c7752b0391d8f4875a6fca7b2dad85ec62aa12c0b54b25eb9ddac0bf"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-amd64-rootfs.tar.gz",
+          "sha256": "d28c09f3616c70aae79e499b226e0e57f336629294bdb091280c13b087fd7b74"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-i386-rootfs.tar.gz",
-          "sha256": "d6165cf5bd6170c72f792a51091e3f69ec8d0e64b0c5d6584210d0c35015f74a"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
+          "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
       ]
     },
     "ubuntu-24": {
-      "id": "ubuntu-24.04-1.0fix3",
-      "name": "Ubuntu 24.04 1.0fix3",
-      "description": "Ubuntu 24.04 (noble) penv v1.0fix3 rootfs",
+      "id": "ubuntu-24.04-1.1",
+      "name": "Ubuntu 24.04 1.1",
+      "description": "Ubuntu 24.04 (noble) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-amd64-rootfs.tar.gz",
-          "sha256": "10ea8552c7752b0391d8f4875a6fca7b2dad85ec62aa12c0b54b25eb9ddac0bf"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-amd64-rootfs.tar.gz",
+          "sha256": "d28c09f3616c70aae79e499b226e0e57f336629294bdb091280c13b087fd7b74"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-i386-rootfs.tar.gz",
-          "sha256": "d6165cf5bd6170c72f792a51091e3f69ec8d0e64b0c5d6584210d0c35015f74a"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
+          "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
       ]
     },
     "ubuntu": {
-      "id": "ubuntu-24.04-1.0fix3",
-      "name": "Ubuntu 24.04 1.0fix3",
-      "description": "Ubuntu 24.04 (noble) penv v1.0fix3 rootfs",
+      "id": "ubuntu-24.04-1.1",
+      "name": "Ubuntu 24.04 1.1",
+      "description": "Ubuntu 24.04 (noble) penv v1.1 rootfs",
       "urls": [
         {
           "arch": "amd64",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-amd64-rootfs.tar.gz",
-          "sha256": "10ea8552c7752b0391d8f4875a6fca7b2dad85ec62aa12c0b54b25eb9ddac0bf"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-amd64-rootfs.tar.gz",
+          "sha256": "d28c09f3616c70aae79e499b226e0e57f336629294bdb091280c13b087fd7b74"
         },
         {
           "arch": "i386",
-          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-i386-rootfs.tar.gz",
-          "sha256": "d6165cf5bd6170c72f792a51091e3f69ec8d0e64b0c5d6584210d0c35015f74a"
+          "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
+          "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
       ]
     }
