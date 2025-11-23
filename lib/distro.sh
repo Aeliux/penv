@@ -27,9 +27,9 @@ distro::download(){
   local actual_distro_id
   actual_distro_id=$(echo "$distro_data" | jq -r '.id')
   
-  # Determine final distro ID
-  local final_id="$distro_id"
+  # Determine if this is a custom name or alias
   local is_custom=false
+  local final_id="$distro_id"
   
   if [[ -n "$custom_name" ]]; then
     # Validate custom name
@@ -58,60 +58,60 @@ distro::download(){
     return 1
   fi
   
-  # Check if base distro already downloaded (for reuse)
-  local base_distro_file=""
-  if [[ "$is_custom" == "true" ]]; then
-    base_distro_file=$(index::get_local_path "$actual_distro_id")
-    
-    if [[ -n "$base_distro_file" ]] && [[ -f "$base_distro_file" ]]; then
-      msg "Reusing existing base distro: $actual_distro_id"
-    else
-      base_distro_file=""
-      if [[ ${#addons[@]} -gt 0 ]]; then
-        info "Base distro not found locally, downloading: $actual_distro_id"
-      fi
-    fi
-  fi
+  # Check if base distro exists, download if not
+  local base_distro_file
+  base_distro_file=$(index::get_local_path "$actual_distro_id")
   
-  # Download base distro if needed
-  local cache_file
-  if [[ -n "$base_distro_file" ]]; then
-    # Reuse existing download
-    cache_file="$base_distro_file"
-  else
-    # Get URL for current architecture
-    local url
+  if [[ -z "$base_distro_file" ]] || [[ ! -f "$base_distro_file" ]]; then
+    # Base distro doesn't exist, download it
+    info "Downloading base distro: $actual_distro_id"
+    
+    # Get URL and checksum for current architecture
+    local url checksum
     url=$(index::get_url_for_arch "$distro_data" "$ARCH")
+    checksum=$(echo "$distro_data" | jq -r ".urls[] | select(.arch == \"$ARCH\" or .arch == \"all\") | .sha256 // empty" | head -1)
     
     if [[ -z "$url" ]]; then
       return 1
     fi
     
-    # Download to cache (use actual_distro_id for base downloads, final_id for simple downloads)
-    if [[ "$is_custom" == "true" ]] && [[ ${#addons[@]} -gt 0 ]]; then
-      cache_file="$CACHE_DIR/${actual_distro_id}.tar.gz"
-    else
-      cache_file="$CACHE_DIR/${final_id}.tar.gz"
+    local base_cache_file="$CACHE_DIR/${actual_distro_id}.tar.gz"
+    
+    # Download base distro
+    download_file "$url" "$base_cache_file" || return 1
+    
+    # Verify checksum
+    if ! verify_checksum "$base_cache_file" "$checksum"; then
+      err "Downloaded file failed checksum verification"
+      rm -f "$base_cache_file"
+      return 1
     fi
     
-    download_file "$url" "$cache_file" || return 1
+    # Store base distro in index
+    index::store_downloaded "$actual_distro_id" "$base_cache_file"
+    base_distro_file="$base_cache_file"
     
-    # Store base distro in index if it was the actual distro ID
-    if [[ "$is_custom" == "true" ]] && [[ ${#addons[@]} -gt 0 ]]; then
-      index::store_downloaded "$actual_distro_id" "$cache_file"
+    msg "Base distro downloaded: $actual_distro_id"
+  else
+    if [[ "$is_custom" == "true" ]] || [[ ${#addons[@]} -gt 0 ]]; then
+      msg "Using existing base distro: $actual_distro_id"
     fi
   fi
   
-  # If addons requested, apply them to create custom distro
+  # Handle different scenarios
   if [[ ${#addons[@]} -gt 0 ]]; then
-    info "Applying ${#addons[@]} addon(s)..."
+    # Custom distro with addons: apply addons and save with custom name
+    info "Creating custom distro with ${#addons[@]} addon(s)..."
     
-    # Build JSON array for addons
     local addons_json
     addons_json=$(printf '%s\n' "${addons[@]}" | jq -R . | jq -s .)
     
-    local custom_cache_file
-    custom_cache_file=$(distro::apply_addons "$cache_file" "$final_id" "$actual_distro_id" "${addons[@]}") || return 1
+    local custom_cache_file="$CACHE_DIR/${final_id}.tar.gz"
+    
+    # Apply addons to base distro
+    if ! distro::apply_addons "$base_distro_file" "$custom_cache_file" "$actual_distro_id" "${addons[@]}"; then
+      return 1
+    fi
     
     # Store custom distro with metadata
     index::store_downloaded "$final_id" "$custom_cache_file" "$actual_distro_id" "$addons_json" "custom"
@@ -119,25 +119,28 @@ distro::download(){
     msg "Custom distro created: ${C_BOLD}$final_id${C_RESET}"
     info "Base: $actual_distro_id + addons: ${addons[*]}"
     info "File: $custom_cache_file"
-  else
-    # Simple download (no addons)
-    if [[ "$is_custom" != "true" ]]; then
-      # Store base distro
-      index::store_downloaded "$final_id" "$cache_file"
-    else
-      # Custom name but no addons - just an alias
-      index::store_downloaded "$final_id" "$cache_file" "$actual_distro_id" "[]" "alias"
-    fi
     
-    msg "Distro downloaded: ${C_BOLD}$final_id${C_RESET}"
-    info "File: $cache_file"
+  elif [[ "$is_custom" == "true" ]]; then
+    # Alias: just store reference to base distro, no file duplication
+    index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias"
+    
+    msg "Alias created: ${C_BOLD}$final_id${C_RESET} → $actual_distro_id"
+    info "File: $base_distro_file (shared with base)"
+    
+  else
+    # Simple base distro download (already done above if needed)
+    if [[ "$final_id" != "$actual_distro_id" ]]; then
+      # It was downloaded using the actual ID, but user used an alias
+      msg "Distro available: ${C_BOLD}$final_id${C_RESET}"
+    fi
+    info "File: $base_distro_file"
   fi
 }
 
 # Apply addons to a distro
 distro::apply_addons(){
-  local tarball="$1"
-  local final_id="$2"
+  local source_tarball="$1"
+  local output_file="$2"
   local distro_id="$3"
   shift 3
   local addons=("$@")
@@ -150,7 +153,7 @@ distro::apply_addons(){
   
   # Extract original
   info "Extracting base distro..."
-  extract_tarball "$tarball" "$temp_root" || {
+  extract_tarball "$source_tarball" "$temp_root" || {
     rm -rf "$temp_root"
     err "Failed to extract base distro"
     return 1
@@ -212,11 +215,6 @@ distro::apply_addons(){
   done
   
   # Compress modified rootfs
-  local output_file="$CACHE_DIR/${final_id}.tar.gz"
-  
-  # Remove old tarball first
-  rm -f "$tarball"
-  
   compress_tarball "$temp_root" "$output_file" || {
     rm -rf "$temp_root"
     err "Failed to compress modified distro"
@@ -226,7 +224,7 @@ distro::apply_addons(){
   # Cleanup
   rm -rf "$temp_root"
   
-  echo "$output_file"
+  return 0
 }
 
 # List downloaded distros
@@ -287,7 +285,7 @@ distro::clean(){
   index::init_local
   
   local file_path distro_type
-  file_path=$(index::get_local_path "$distro_id")
+  file_path=$(jq -r ".distros[\"$distro_id\"].file // empty" "$LOCAL_INDEX" 2>/dev/null)
   distro_type=$(jq -r ".distros[\"$distro_id\"].type // \"base\"" "$LOCAL_INDEX" 2>/dev/null)
   
   if [[ -z "$file_path" ]]; then
@@ -296,18 +294,31 @@ distro::clean(){
     return 1
   fi
   
-  # Check if this is a base distro used by custom distros
+  # Check if this is a base distro used by custom distros or aliases
   if [[ "$distro_type" == "base" ]]; then
     local dependents
     dependents=$(jq -r ".distros | to_entries[] | select(.value.base_distro == \"$distro_id\") | .key" "$LOCAL_INDEX" 2>/dev/null)
     
     if [[ -n "$dependents" ]]; then
-      warn "This base distro is used by custom distros:"
-      echo "$dependents" | while read -r dep; do
-        echo -e "    ${C_CYAN}$dep${C_RESET}"
-      done
+      local custom_count alias_count
+      custom_count=$(jq -r "[.distros | to_entries[] | select(.value.base_distro == \"$distro_id\" and .value.type == \"custom\")] | length" "$LOCAL_INDEX" 2>/dev/null)
+      alias_count=$(jq -r "[.distros | to_entries[] | select(.value.base_distro == \"$distro_id\" and .value.type == \"alias\")] | length" "$LOCAL_INDEX" 2>/dev/null)
+      
+      warn "This base distro is used by:"
+      if [[ "$custom_count" -gt 0 ]]; then
+        echo "  Custom distros ($custom_count):"
+        jq -r ".distros | to_entries[] | select(.value.base_distro == \"$distro_id\" and .value.type == \"custom\") | .key" "$LOCAL_INDEX" 2>/dev/null | while read -r dep; do
+          echo -e "    ${C_CYAN}$dep${C_RESET}"
+        done
+      fi
+      if [[ "$alias_count" -gt 0 ]]; then
+        echo "  Aliases ($alias_count):"
+        jq -r ".distros | to_entries[] | select(.value.base_distro == \"$distro_id\" and .value.type == \"alias\") | .key" "$LOCAL_INDEX" 2>/dev/null | while read -r dep; do
+          echo -e "    ${C_MAGENTA}$dep${C_RESET}"
+        done
+      fi
       echo
-      read -p "$(echo -e "${C_YELLOW}Remove anyway? Custom distros will still work. (y/N):${C_RESET} ")" yn
+      read -p "$(echo -e "${C_YELLOW}Remove anyway? Custom distros will still work, aliases will break. (y/N):${C_RESET} ")" yn
       
       case "$yn" in
         [Yy]) ;;
@@ -319,6 +330,17 @@ distro::clean(){
     fi
   fi
   
+  # For aliases, just remove from index (file is shared)
+  if [[ "$distro_type" == "alias" ]]; then
+    local tmp_file
+    tmp_file=$(mktemp)
+    jq --arg id "$distro_id" 'del(.distros[$id])' "$LOCAL_INDEX" > "$tmp_file" && \
+      mv "$tmp_file" "$LOCAL_INDEX"
+    msg "Removed alias: $distro_id"
+    return 0
+  fi
+  
+  # For base and custom distros, remove file and index entry
   if [[ -f "$file_path" ]]; then
     local size
     size=$(du -sh "$file_path" 2>/dev/null | cut -f1)

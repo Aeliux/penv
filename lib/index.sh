@@ -268,12 +268,39 @@ index::store_downloaded(){
   fi
 }
 
-# Get local path for downloaded distro
+# Get local path for downloaded distro (resolves aliases to base distro file)
 index::get_local_path(){
   local distro_id="$1"
   require_jq
   
   index::init_local
   
-  jq -r ".distros[\"$distro_id\"].file // empty" "$LOCAL_INDEX" 2>/dev/null
+  # Get the distro entry
+  local distro_entry
+  distro_entry=$(jq -r ".distros[\"$distro_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
+  
+  if [[ -z "$distro_entry" || "$distro_entry" == "null" ]]; then
+    return 1
+  fi
+  
+  # Check if it's an alias
+  local distro_type base_distro file_path
+  distro_type=$(echo "$distro_entry" | jq -r '.type // "base"')
+  
+  if [[ "$distro_type" == "alias" ]]; then
+    # Resolve alias to base distro file
+    base_distro=$(echo "$distro_entry" | jq -r '.base_distro // empty')
+    if [[ -n "$base_distro" && "$base_distro" != "null" ]]; then
+      file_path=$(jq -r ".distros[\"$base_distro\"].file // empty" "$LOCAL_INDEX" 2>/dev/null)
+    fi
+  else
+    # Get file directly
+    file_path=$(echo "$distro_entry" | jq -r '.file // empty')
+  fi
+  
+  if [[ -z "$file_path" || "$file_path" == "null" ]]; then
+    return 1
+  fi
+  
+  echo "$file_path"
 }

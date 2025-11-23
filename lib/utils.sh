@@ -26,6 +26,36 @@ require_jq(){
   fi
 }
 
+# Verify file checksum
+verify_checksum(){
+  local file="$1"
+  local expected_sha256="$2"
+  
+  if [[ -z "$expected_sha256" || "$expected_sha256" == "null" ]]; then
+    # No checksum provided, skip verification
+    return 0
+  fi
+  
+  if ! command -v sha256sum >/dev/null 2>&1; then
+    warn "sha256sum not found, skipping checksum verification"
+    return 0
+  fi
+  
+  info "Verifying checksum..."
+  local actual_sha256
+  actual_sha256=$(sha256sum "$file" | cut -d' ' -f1)
+  
+  if [[ "$actual_sha256" == "$expected_sha256" ]]; then
+    msg "Checksum verified"
+    return 0
+  else
+    err "Checksum mismatch!"
+    err "  Expected: $expected_sha256"
+    err "  Got:      $actual_sha256"
+    return 1
+  fi
+}
+
 # Download a file with progress
 download_file(){
   local url="$1" out="$2"

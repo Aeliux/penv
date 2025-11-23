@@ -82,7 +82,7 @@ distros.append(
             Url(
                 arch="amd64",
                 url="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz",
-                sha256="f66a0d91d822e3a60450ee88a99f9464b23e63f0ae43e0f6ade9c21a3bb3c84f"
+                sha256="6bc2cde3930ad088b3bb46fa45279e96d25bc3810f209850ecbe4722711874f9"
             )
         ],
         aliases=["ubuntu-24-vanilla", "ubuntu-vanilla"]
@@ -98,7 +98,7 @@ distros.append(
             Url(
                 arch="amd64",
                 url="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz",
-                sha256="b27c30c7557a8b7cab55cb5f2d79b93f9e906be67c32b89a0f49efcd6d2f5c0c"
+                sha256="412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be"
             )
         ],
         aliases=["alpine-3-vanilla", "alpine-vanilla"]
