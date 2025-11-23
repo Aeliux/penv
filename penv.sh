@@ -22,16 +22,6 @@ C_MAGENTA='\e[1;35m'
 C_CYAN='\e[1;36m'
 C_WHITE='\e[1;37m'
 
-# -------- Icons --------
-ICON_CHECK="✓"
-ICON_CROSS="✗"
-ICON_ARROW="→"
-ICON_INFO="ℹ"
-ICON_DOWNLOAD="⬇"
-ICON_PACKAGE="📦"
-ICON_SHELL="🐚"
-ICON_TRASH="🗑"
-
 # Default distro mapping (key -> tarball URL)
 declare -A DISTROS=(
   [ubuntu-24.04]="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz"
@@ -49,11 +39,11 @@ elif command -v wget >/dev/null 2>&1; then
 fi
 
 # -------- helpers --------
-msg(){ echo -e "${C_GREEN}${ICON_CHECK}${C_RESET} $*"; }
-info(){ echo -e "${C_CYAN}${ICON_INFO}${C_RESET} $*"; }
-warn(){ echo -e "${C_YELLOW}⚠${C_RESET}  $*"; }
-err(){ echo -e "${C_RED}${ICON_CROSS} ERROR:${C_RESET} $*" >&2; }
-header(){ echo -e "\n${C_BOLD}${C_CYAN}$*${C_RESET}"; }
+msg(){ echo -e "${C_GREEN}[✓]${C_RESET} $*"; }
+info(){ echo -e "${C_CYAN}[i]${C_RESET} $*"; }
+warn(){ echo -e "${C_YELLOW}[!]${C_RESET} $*"; }
+err(){ echo -e "${C_RED}[ERROR]${C_RESET} $*" >&2; }
+header(){ echo -e "\n${C_BOLD}${C_CYAN}=== $* ===${C_RESET}"; }
 ensure_dirs(){
   mkdir -p "$CACHE_DIR" "$ENVS_DIR" "$BIN_DIR"
 }
@@ -64,9 +54,9 @@ show_progress(){
   local percent=$((current * 100 / total))
   local filled=$((percent / 2))
   local empty=$((50 - filled))
-  printf "\r${C_CYAN}${ICON_DOWNLOAD}${C_RESET} ["
-  printf "%${filled}s" | tr ' ' '█'
-  printf "%${empty}s" | tr ' ' '░'
+  printf "\r${C_CYAN}[DOWNLOAD]${C_RESET} ["
+  printf "%${filled}s" | tr ' ' '#'
+  printf "%${empty}s" | tr ' ' '-'
   printf "] ${C_BOLD}%3d%%${C_RESET}" "$percent"
 }
 require_proot(){
@@ -98,7 +88,7 @@ usage(){
   echo "  penv delete myenv"
   echo
   echo -e "${C_BOLD}ALIASES:${C_RESET}"
-  echo -e "  ${C_DIM}enter → shell, available → download -l, list-envs → list${C_RESET}"
+  echo -e "  ${C_DIM}enter -> shell, available -> download -l, list-envs -> list${C_RESET}"
 }
 
 distro_resolve(){
@@ -183,13 +173,13 @@ extract_tarball_to(){
 }
 
 list_envs(){
-  header "${ICON_PACKAGE} Available Environments"
+  header "Available Environments"
   if [[ -d "$ENVS_DIR" ]] && [[ -n "$(ls -A "$ENVS_DIR" 2>/dev/null)" ]]; then
     for env in "$ENVS_DIR"/*; do
       local name size
       name=$(basename "$env")
       size=$(du -sh "$env" 2>/dev/null | cut -f1)
-      printf "  ${C_GREEN}●${C_RESET} ${C_BOLD}%-20s${C_RESET} ${C_DIM}(%s)${C_RESET}\n" "$name" "$size"
+      printf "  ${C_GREEN}*${C_RESET} ${C_BOLD}%-20s${C_RESET} ${C_DIM}(%s)${C_RESET}\n" "$name" "$size"
     done
   else
     echo -e "  ${C_DIM}No environments created yet.${C_RESET}"
@@ -199,13 +189,13 @@ list_envs(){
 }
 
 list_cached(){
-  header "${ICON_DOWNLOAD} Cached Downloads"
+  header "Cached Downloads"
   if [[ -d "$CACHE_DIR" ]] && [[ -n "$(ls -A "$CACHE_DIR" 2>/dev/null)" ]]; then
     for cache in "$CACHE_DIR"/*; do
       local name size
       name=$(basename "$cache")
       size=$(du -sh "$cache" 2>/dev/null | cut -f1)
-      printf "  ${C_CYAN}▸${C_RESET} ${C_BOLD}%-40s${C_RESET} ${C_DIM}(%s)${C_RESET}\n" "$name" "$size"
+      printf "  ${C_CYAN}>${C_RESET} ${C_BOLD}%-40s${C_RESET} ${C_DIM}(%s)${C_RESET}\n" "$name" "$size"
     done
   else
     echo -e "  ${C_DIM}No cached downloads.${C_RESET}"
@@ -216,7 +206,7 @@ list_cached(){
 # -------- commands --------
 cmd_init(){
   ensure_dirs
-  header "${ICON_PACKAGE} penv initialized successfully!"
+  header "penv initialized successfully!"
   echo -e "  ${C_CYAN}Cache:${C_RESET}      $CACHE_DIR"
   echo -e "  ${C_CYAN}Envs:${C_RESET}       $ENVS_DIR"
   echo
@@ -238,7 +228,7 @@ cmd_init(){
 }
 
 cmd_available(){
-  header "${ICON_DOWNLOAD} Available Distributions"
+  header "Available Distributions"
   printf "  ${C_BOLD}${C_CYAN}%-20s${C_RESET}  ${C_BOLD}${C_DIM}%s${C_RESET}\n" "ID" "SOURCE URL"
   echo -e "  ${C_DIM}$(printf '%.0s─' {1..80})${C_RESET}"
   for k in "${!DISTROS[@]}"; do
@@ -324,7 +314,7 @@ cmd_create(){
     exit 2
   fi
   
-  header "${ICON_PACKAGE} Creating environment: $name"
+  header "Creating environment: $name"
   mkdir -p "$root"
   extract_tarball_to "$tar" "$root"
   
@@ -357,7 +347,7 @@ cmd_shell(){
   fi
 
   require_proot
-  header "${ICON_SHELL} Entering environment: $name"
+  header "Entering environment: $name"
   echo -e "  ${C_DIM}Rootfs: $root${C_RESET}"
   echo
 
