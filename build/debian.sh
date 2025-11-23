@@ -35,6 +35,7 @@ fi
 
 # Ensure output directory exists
 mkdir -p "$(dirname "$OUTPUT_FILE")"
+chmod 755 "$(dirname "$OUTPUT_FILE")"
 
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) rootfs..."
 
@@ -149,6 +150,7 @@ helpers/fix-perm.sh "$ROOTFS_DIR"
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
 tar -czf "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
+chapmod 644 "$OUTPUT_FILE"
 
 # Clean up rootfs directory
 echo "Removing temporary rootfs directory..."
