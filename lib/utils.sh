@@ -233,6 +233,22 @@ setup_proot_env(){
     cp -L /etc/resolv.conf "$rootfs/etc/resolv.conf" 2>/dev/null || true
   fi
   
+  # Copy host users and groups to prevent ID resolving issues
+  # This ensures UIDs/GIDs match between host and environment
+  if [[ -f /etc/passwd ]]; then
+    cp -L /etc/passwd "$rootfs/etc/passwd" 2>/dev/null || true
+  fi
+  if [[ -f /etc/group ]]; then
+    cp -L /etc/group "$rootfs/etc/group" 2>/dev/null || true
+  fi
+  
+  # Fix directory permissions for proot -0 compatibility
+  # When tarballs created by root are extracted by non-root users,
+  # proot with fake root (-0) fails to access directories
+  # This ensures all directories are world-readable and executable
+  info "Fixing permissions..."
+  find "$rootfs" -type d -exec chmod a+rx {} \; 2>/dev/null || true
+  
   return 0
 }
 
@@ -249,9 +265,14 @@ exec_in_proot(){
     return 1
   fi
   
-  proot -0 -r "$rootfs" \
+  # Change to rootfs directory to fix proot working directory issues
+  # When proot is launched from outside the rootfs with -r <path>,
+  # the current directory (.) gets confused. Using -r . from inside
+  # the rootfs directory fixes this.
+  cd "$rootfs" || return 1
+  
+  proot -0 -r . \
     -b /dev -b /proc -b /sys \
-    -b /etc/passwd -b /etc/group \
     -w / \
     "${cmd[@]}"
 }
