@@ -339,9 +339,14 @@ distro::clean(){
   if [[ "$distro_type" == "alias" ]]; then
     local tmp_file
     tmp_file=$(mktemp)
-    jq --arg id "$distro_id" 'del(.distros[$id])' "$LOCAL_INDEX" > "$tmp_file" && \
+    if jq --arg id "$distro_id" 'del(.distros[$id])' "$LOCAL_INDEX" > "$tmp_file"; then
       mv "$tmp_file" "$LOCAL_INDEX"
-    msg "Removed alias: $distro_id"
+      msg "Removed alias: $distro_id"
+    else
+      rm -f "$tmp_file"
+      err "Failed to update local index"
+      return 1
+    fi
     return 0
   fi
   
@@ -358,8 +363,13 @@ distro::clean(){
   # Remove from local index
   local tmp_file
   tmp_file=$(mktemp)
-  jq --arg id "$distro_id" 'del(.distros[$id])' "$LOCAL_INDEX" > "$tmp_file" && \
+  if jq --arg id "$distro_id" 'del(.distros[$id])' "$LOCAL_INDEX" > "$tmp_file"; then
     mv "$tmp_file" "$LOCAL_INDEX"
+  else
+    rm -f "$tmp_file"
+    err "Failed to update local index"
+    return 1
+  fi
 }
 
 # Clean all downloads

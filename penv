@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# penv2 - proot environment manager (refactored)
+# penv - proot environment manager
 
 set -euo pipefail
 IFS=$'\n\t'

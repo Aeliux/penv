@@ -3,33 +3,26 @@
 
 # Namespace: index::
 
-# Download and cache the remote index
+# Fetch the remote index directly (no caching)
 index::fetch_remote(){
-  local index_cache="$PENV_DIR/remote_index.json"
-  local age=0
+  local temp_index
+  temp_index=$(mktemp)
   
-  if [[ -f "$index_cache" ]]; then
-    age=$(( $(date +%s) - $(stat -c %Y "$index_cache" 2>/dev/null || stat -f %m "$index_cache" 2>/dev/null || echo 0) ))
-  fi
+  download_file "$INDEX_URL" "$temp_index" >&2 || {
+    rm -f "$temp_index"
+    err "Failed to fetch remote index"
+    return 1
+  }
   
-  # Refresh if older than 1 hour (3600 seconds)
-  if [[ ! -f "$index_cache" ]] || (( age > 3600 )); then
-    info "Fetching remote index..." >&2
-    download_file "$INDEX_URL" "$index_cache" >&2 || {
-      err "Failed to fetch remote index" >&2
-      return 1
-    }
-  fi
-  
-  echo "$index_cache"
+  echo "$temp_index"
 }
 
 # Initialize local index if it doesn't exist
 index::init_local(){
   if [[ ! -f "$LOCAL_INDEX" ]]; then
-    echo '{"distros":{}}' > "$LOCAL_INDEX"
+    echo '{\"distros\":{}}' > "$LOCAL_INDEX"
   else
-    # Migrate old format to new format if needed
+    # Migrate from legacy format (pre-v2.0) if needed
     if jq -e '.custom' "$LOCAL_INDEX" >/dev/null 2>&1; then
       index::migrate_local_index
     fi
@@ -38,17 +31,17 @@ index::init_local(){
   return 0
 }
 
-# Migrate old local index format to new unified format
+# Migrate legacy local index format (pre-v2.0) to current format
 index::migrate_local_index(){
   require_jq
   
-  info "Migrating local index to new format..." >&2
+  info "Migrating legacy local index to current format..." >&2
   
   local tmp_file
   tmp_file=$(mktemp)
   
   # Convert old format to new format
-  jq '
+  if jq '
     # Start with existing distros, convert them to new format
     (.distros | to_entries | map({
       key: .key,
@@ -73,9 +66,14 @@ index::migrate_local_index(){
     
     # Merge base and custom distros
     {distros: ($base_distros + $custom_distros)}
-  ' "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
-  
-  msg "Local index migrated successfully" >&2
+  ' "$LOCAL_INDEX" > "$tmp_file"; then
+    mv "$tmp_file" "$LOCAL_INDEX"
+    msg "Local index migrated successfully" >&2
+  else
+    rm -f "$tmp_file"
+    err "Failed to migrate local index" >&2
+    return 1
+  fi
 }
 
 # Get distro info from remote index
@@ -89,6 +87,9 @@ index::get_distro(){
   # Get from remote index only
   local data
   data=$(jq -r ".distros[\"$distro_id\"] // empty" "$remote_index" 2>/dev/null)
+  
+  # Clean up temp file
+  rm -f "$remote_index"
   
   if [[ -z "$data" || "$data" == "null" ]]; then
     return 1
@@ -107,6 +108,9 @@ index::get_addon(){
   
   local data
   data=$(jq -r ".addons[\"$addon_id\"] // empty" "$remote_index" 2>/dev/null)
+  
+  # Clean up temp file
+  rm -f "$remote_index"
   
   if [[ -z "$data" || "$data" == "null" ]]; then
     return 1
@@ -152,6 +156,9 @@ index::list_distros(){
     printf "  ${C_GREEN}%-30s${C_RESET} ${C_DIM}%s${C_RESET}\n" "$id" "$desc"
   done
   
+  # Clean up temp file
+  rm -f "$remote_index"
+  
   echo
 }
 
@@ -170,6 +177,7 @@ index::list_addons(){
   if [[ "$addon_count" -eq 0 ]]; then
     echo -e "  ${C_DIM}No addons available yet${C_RESET}"
     echo
+    rm -f "$remote_index"
     return
   fi
   
@@ -180,6 +188,9 @@ index::list_addons(){
       printf "  ${C_MAGENTA}%-30s${C_RESET} ${C_DIM}%s${C_RESET}\n" "$id" "$desc"
     fi
   done
+  
+  # Clean up temp file
+  rm -f "$remote_index"
   
   echo
 }
@@ -249,27 +260,39 @@ index::store_downloaded(){
   local tmp_file
   tmp_file=$(mktemp)
   
+  local jq_success=false
   if [[ -n "$base_distro" ]]; then
     # Store custom distro with base_distro and addons
-    jq --arg id "$distro_id" \
+    if jq --arg id "$distro_id" \
        --arg path "$file_path" \
        --arg date "$(date -Iseconds)" \
        --arg base "$base_distro" \
        --argjson addons "$addons_json" \
        --arg type "$distro_type" \
        '.distros[$id] = {file: $path, downloaded: $date, base_distro: $base, addons: $addons, type: $type}' \
-       "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
+       "$LOCAL_INDEX" > "$tmp_file"; then
+      jq_success=true
+    fi
   else
     # Store base distro
-    jq --arg id "$distro_id" \
+    if jq --arg id "$distro_id" \
        --arg path "$file_path" \
        --arg date "$(date -Iseconds)" \
        --arg type "$distro_type" \
        '.distros[$id] = {file: $path, downloaded: $date, type: $type}' \
-       "$LOCAL_INDEX" > "$tmp_file" && mv "$tmp_file" "$LOCAL_INDEX"
+       "$LOCAL_INDEX" > "$tmp_file"; then
+      jq_success=true
+    fi
   fi
   
-  return 0
+  if [[ "$jq_success" == "true" ]]; then
+    mv "$tmp_file" "$LOCAL_INDEX"
+    return 0
+  else
+    rm -f "$tmp_file"
+    err "Failed to update local index"
+    return 1
+  fi
 }
 
 # Get local path for downloaded distro (resolves aliases to base distro file)

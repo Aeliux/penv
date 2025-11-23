@@ -66,6 +66,12 @@ download_file(){
     return 0
   fi
   
+  # Check for download tool early (skip for file:// URLs)
+  if [[ ! "$url" =~ ^file:// ]] && [[ -z "$DL_TOOL" ]]; then
+    err "No download tool found. Install aria2c, curl or wget."
+    return 2
+  fi
+  
   info "Downloading: $(basename "$out")"
   echo -e "${C_DIM}Source: $url${C_RESET}"
   
@@ -75,7 +81,7 @@ download_file(){
       err "Source file not found: $file_path"
       return 1
     fi
-    if ! cp -n "$file_path" "$out"; then
+    if ! cp "$file_path" "$out"; then
       err "Failed to copy file: $file_path"
       return 1
     fi
@@ -93,10 +99,6 @@ download_file(){
       ;;
     wget)
       wget -c --progress=bar:force -O "$out" "$url" || download_status=$?
-      ;;
-    *)
-      err "No download tool found. Install aria2c, curl or wget."
-      return 2
       ;;
   esac
   
@@ -195,13 +197,6 @@ exec_in_proot(){
     -b /dev -b /proc -b /sys \
     -w / \
     "${cmd[@]}"
-  
-  local proot_status=$?
-  if [[ $proot_status -ne 0 ]]; then
-    return $proot_status
-  fi
-  
-  return 0
 }
 
 # Compress directory to tarball
