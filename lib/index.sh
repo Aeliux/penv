@@ -309,6 +309,7 @@ index::get_local_path(){
   distro_entry=$(jq -r ".distros[\"$distro_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
   
   if [[ -z "$distro_entry" || "$distro_entry" == "null" ]]; then
+    err "Distro not found in local index: $distro_id"
     return 1
   fi
   
