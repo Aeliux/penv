@@ -1,0 +1,185 @@
+name: Build debian-based Rootfs Images
+
+on:
+  push:
+    tags:
+      - 'debian-*'
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [debian, ubuntu]
+        arch: [amd64, i386, armhf, arm64]
+        release:
+          # Debian releases
+          - distro_name: debian
+            codename: bookworm
+            version: '12'
+          - distro_name: debian
+            codename: bullseye
+            version: '11'
+          - distro_name: debian
+            codename: trixie
+            version: '13'
+          # Ubuntu releases
+          - distro_name: ubuntu
+            codename: noble
+            version: '24.04'
+          - distro_name: ubuntu
+            codename: jammy
+            version: '22.04'
+          - distro_name: ubuntu
+            codename: focal
+            version: '20.04'
+        exclude:
+          # Exclude mismatched distro/release combinations
+          - distro: debian
+            release:
+              distro_name: ubuntu
+          - distro: ubuntu
+            release:
+              distro_name: debian
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debootstrap debian-archive-keyring ubuntu-keyring qemu-user-static binfmt-support
+
+      - name: Enable multi-architecture support
+        run: |
+          sudo update-binfmts --enable
+          sudo systemctl restart systemd-binfmt.service || true
+
+      - name: Build rootfs
+        env:
+          DISTRO: ${{ matrix.distro }}
+          DISTRO_RELEASE: ${{ matrix.release.codename }}
+          DISTRO_ARCH: ${{ matrix.arch }}
+        run: |
+          cd build
+          sudo -E ./debian.sh
+
+      - name: Generate checksums
+        run: |
+          cd output
+          sha256sum *.tar.gz > ${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-rootfs.tar.gz.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-rootfs
+          path: |
+            output/${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-rootfs.tar.gz
+            output/${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-rootfs.tar.gz.sha256
+          retention-days: 7
+
+  create-release:
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find release-artifacts -type f -name "*.tar.gz*" -exec cp {} release-files/ \;
+          cd release-files
+          sha256sum *.tar.gz > SHA256SUMS
+          ls -lh
+
+      - name: Determine release tag
+        id: release_tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "tag=${{ github.event.inputs.release_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## Rootfs Images
+
+          This release includes pre-built rootfs images for multiple distributions, architectures, and releases.
+
+          ### Distributions
+          
+          #### Debian
+          - **Bookworm (12)** - Stable
+          - **Bullseye (11)** - Oldstable
+          - **Trixie (13)** - Testing
+
+          #### Ubuntu
+          - **Noble (24.04)** - LTS
+          - **Jammy (22.04)** - LTS
+          - **Focal (20.04)** - LTS
+
+          ### Architectures
+          - `amd64` - 64-bit x86
+          - `i386` - 32-bit x86
+          - `arm64` - 64-bit ARM (ARMv8)
+          - `armhf` - 32-bit ARM (ARMv7)
+
+          ### File Naming Convention
+          ```
+          {distro}-{release}-{arch}-rootfs.tar.gz
+          ```
+
+          Example: `ubuntu-noble-arm64-rootfs.tar.gz`
+
+          ### Checksums
+          See `SHA256SUMS` file for all checksums.
+
+          ---
+          
+          Built on: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          Commit: ${{ github.sha }}
+          EOF
+          echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.release_tag.outputs.tag }}
+          name: Release ${{ steps.release_tag.outputs.tag }}
+          body_path: release_notes.md
+          draft: true
+          prerelease: false
+          files: |
+            release-files/*.tar.gz
+            release-files/*.sha256
+            release-files/SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        run: |
+          echo "## Release Created! 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.release_tag.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** Draft" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          ls -lh release-files/ >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Visit the [Releases page](https://github.com/${{ github.repository }}/releases) to review and publish the draft release." >> $GITHUB_STEP_SUMMARY

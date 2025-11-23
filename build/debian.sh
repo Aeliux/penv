@@ -5,16 +5,38 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Configuration
-DEBIAN_RELEASE="${DEBIAN_RELEASE:-bookworm}"
-DEBIAN_ARCH="${DEBIAN_ARCH:-amd64}"
-ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/debian-rootfs}"
-OUTPUT_FILE="${OUTPUT_FILE:-output/debian-${DEBIAN_RELEASE}-${DEBIAN_ARCH}-rootfs.tar.gz}"
-MIRROR="${MIRROR:-http://deb.debian.org/debian}"
+DISTRO="${DISTRO:-debian}"  # debian or ubuntu
+DISTRO_RELEASE="${DISTRO_RELEASE:-}"
+DISTRO_ARCH="${DISTRO_ARCH:-amd64}"
+ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-rootfs}"
+OUTPUT_FILE="${OUTPUT_FILE:-}"
+MIRROR="${MIRROR:-}"
+
+# Set distro-specific defaults
+case "$DISTRO" in
+    debian)
+        DISTRO_RELEASE="${DISTRO_RELEASE:-bookworm}"
+        MIRROR="${MIRROR:-http://deb.debian.org/debian}"
+        ;;
+    ubuntu)
+        DISTRO_RELEASE="${DISTRO_RELEASE:-noble}"
+        MIRROR="${MIRROR:-http://archive.ubuntu.com/ubuntu}"
+        ;;
+    *)
+        echo "Error: Unsupported distro '$DISTRO'. Use 'debian' or 'ubuntu'."
+        exit 1
+        ;;
+esac
+
+# Set output file if not specified
+if [ -z "$OUTPUT_FILE" ]; then
+    OUTPUT_FILE="output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs.tar.gz"
+fi
 
 # Ensure output directory exists
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
-echo "Building Debian ${DEBIAN_RELEASE} (${DEBIAN_ARCH}) rootfs..."
+echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) rootfs..."
 
 # Check if debootstrap is installed
 if ! command -v debootstrap >/dev/null 2>&1; then
@@ -29,21 +51,39 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-# Install debian-archive-keyring if missing
-if [ ! -f /usr/share/keyrings/debian-archive-keyring.gpg ]; then
-    echo "Installing debian-archive-keyring..."
-    apt-get update
-    apt-get install -y debian-archive-keyring
-fi
+# Install archive keyring if missing
+case "$DISTRO" in
+    debian)
+        if [ ! -f /usr/share/keyrings/debian-archive-keyring.gpg ]; then
+            echo "Installing debian-archive-keyring..."
+            apt-get update
+            apt-get install -y debian-archive-keyring
+        fi
+        ;;
+    ubuntu)
+        if [ ! -f /usr/share/keyrings/ubuntu-archive-keyring.gpg ]; then
+            echo "Installing ubuntu-keyring..."
+            apt-get update
+            apt-get install -y ubuntu-keyring
+        fi
+        ;;
+esac
 
 # Test network connectivity
 echo "Testing network connectivity..."
-if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DEBIAN_RELEASE/Release" 2>/dev/null; then
+if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DISTRO_RELEASE/Release" 2>/dev/null; then
     echo "Error: Cannot reach $MIRROR"
     echo "Trying alternative mirror..."
-    MIRROR="http://ftp.us.debian.org/debian"
-    if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DEBIAN_RELEASE/Release" 2>/dev/null; then
-        echo "Error: Cannot reach any Debian mirrors. Check your network connection and DNS."
+    case "$DISTRO" in
+        debian)
+            MIRROR="http://ftp.us.debian.org/debian"
+            ;;
+        ubuntu)
+            MIRROR="http://us.archive.ubuntu.com/ubuntu"
+            ;;
+    esac
+    if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DISTRO_RELEASE/Release" 2>/dev/null; then
+        echo "Error: Cannot reach any ${DISTRO^} mirrors. Check your network connection and DNS."
         exit 1
     fi
     echo "Using mirror: $MIRROR"
@@ -60,7 +100,12 @@ mkdir -p "$(dirname "$ROOTFS_DIR")"
 
 # Create rootfs using debootstrap
 echo "Running debootstrap..."
-debootstrap --arch="$DEBIAN_ARCH" --variant=minbase --verbose "$DEBIAN_RELEASE" "$ROOTFS_DIR" "$MIRROR"
+if [ "$DISTRO" = "ubuntu" ]; then
+    # Ubuntu requires additional components
+    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --components=main,universe --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR"
+else
+    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR"
+fi
 
 # Basic cleanup
 echo "Cleaning up rootfs..."
@@ -88,8 +133,8 @@ fi
 cp helpers/deb-start.sh "$ROOTFS_DIR/penv/startup.d/debian.sh"
 chmod +x "$ROOTFS_DIR/penv/startup.d/debian.sh"
 
-# Apply Debian-specific patches
-echo "Applying Debian patches..."
+# Apply Debian-based distro patches
+echo "Applying ${DISTRO^}-based patches..."
 if [ -f helpers/patches/debian.sh ]; then
     mkdir -p "$ROOTFS_DIR/tmp"
     cp helpers/patches/debian.sh "$ROOTFS_DIR/tmp/debian.sh"
@@ -109,6 +154,6 @@ tar -czf "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
 echo "Removing temporary rootfs directory..."
 rm -rf "$ROOTFS_DIR"
 
-echo "Done! Rootfs saved to: $OUTPUT_FILE"
+echo "Done! rootfs saved to: $OUTPUT_FILE"
 echo "Size: $(du -h "$OUTPUT_FILE" | cut -f1)"
 
