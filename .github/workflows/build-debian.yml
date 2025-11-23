@@ -42,6 +42,11 @@ jobs:
           - distro: ubuntu
             release:
               distro_name: debian
+          # Exclude ARM architectures for Ubuntu
+          - distro: ubuntu
+            arch: arm64
+          - distro: ubuntu
+            arch: armhf
     
     steps:
       - name: Checkout repository
@@ -65,6 +70,7 @@ jobs:
         run: |
           cd build
           sudo -E ./debian.sh
+          sudo chown -R $(whoami):$(whoami) ../output
 
       - name: Generate checksums
         run: |
