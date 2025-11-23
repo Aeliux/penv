@@ -156,7 +156,6 @@ jobs:
 
           ---
           
-          Built on: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           Commit: ${{ github.sha }}
           EOF
           echo "notes_file=release_notes.md" >> $GITHUB_OUTPUT
