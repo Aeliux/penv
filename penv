@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# penv2 - proot environment manager (refactored)
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/lib"
+
+# Source all library modules
+source "$LIB_DIR/config.sh"
+source "$LIB_DIR/utils.sh"
+source "$LIB_DIR/index.sh"
+source "$LIB_DIR/distro.sh"
+source "$LIB_DIR/env.sh"
+source "$LIB_DIR/commands.sh"
+
+# -------- Main dispatch --------
+if (( $# < 1 )); then
+  cmd::usage
+  exit 0
+fi
+
+command="$1"
+shift
+
+case "$command" in
+  init)
+    cmd::init
+    ;;
+  # Download distro
+  download|dl)
+    cmd::download "$@"
+    ;;
+  # Create environment
+  create|new)
+    cmd::create "$@"
+    ;;
+  # Enter environment (shell)
+  shell|enter|sh)
+    cmd::shell "$@"
+    ;;
+  # Delete environment
+  delete|remove|rm)
+    cmd::delete "$@"
+    ;;
+  # List resources
+  list|ls)
+    cmd::list "$@"
+    ;;
+  # Show cached downloads
+  cache)
+    cmd::cache
+    ;;
+  # Clean cached downloads
+  clean)
+    cmd::clean "$@"
+    ;;
+  # Help
+  help|--help|-h)
+    cmd::usage
+    ;;
+  *)
+    err "Unknown command: $command"
+    cmd::usage
+    exit 2
+    ;;
+esac

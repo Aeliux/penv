@@ -38,7 +38,11 @@ class Distro(Entry):
 
 @dataclass(frozen=True)
 class Addon(Entry):
-    distroIds: List[str]
+    distroIds: List[str] = None  # Empty means compatible with all distros
+    
+    def __post_init__(self):
+        if self.distroIds is None:
+            object.__setattr__(self, 'distroIds', [])
 
 entries: Dict[str, List[Entry]] = {
     "distros": [],
