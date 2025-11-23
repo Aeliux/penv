@@ -40,26 +40,55 @@ download_file(){
   echo -e "${C_DIM}Source: $url${C_RESET}"
   
   if [[ "$url" =~ ^file:// ]]; then
-    cp -n "${url#file://}" "$out"
+    local file_path="${url#file://}"
+    if [[ ! -f "$file_path" ]]; then
+      err "Source file not found: $file_path"
+      return 1
+    fi
+    if ! cp -n "$file_path" "$out"; then
+      err "Failed to copy file: $file_path"
+      return 1
+    fi
     msg "File copied successfully"
     return 0
   fi
   
+  local download_status=0
   case "$DL_TOOL" in
     aria2c)
-      aria2c -x16 -s16 -c --console-log-level=warn --summary-interval=0 -o "$out" "$url"
+      aria2c -x16 -s16 -c --console-log-level=warn --summary-interval=0 -o "$out" "$url" || download_status=$?
       ;;
     curl)
-      curl -L --fail --retry 5 --retry-delay 2 --continue-at - --progress-bar -o "$out" "$url"
+      curl -L --fail --retry 5 --retry-delay 2 --continue-at - --progress-bar -o "$out" "$url" || download_status=$?
       ;;
     wget)
-      wget -c --progress=bar:force -O "$out" "$url"
+      wget -c --progress=bar:force -O "$out" "$url" || download_status=$?
       ;;
     *)
       err "No download tool found. Install aria2c, curl or wget."
       return 2
       ;;
   esac
+  
+  if [[ $download_status -ne 0 ]]; then
+    err "Download failed with exit code: $download_status"
+    # Clean up partial download
+    [[ -f "$out" ]] && rm -f "$out"
+    return 1
+  fi
+  
+  # Verify file was actually downloaded
+  if [[ ! -f "$out" ]]; then
+    err "Download completed but file not found: $(basename "$out")"
+    return 1
+  fi
+  
+  # Verify file has content
+  if [[ ! -s "$out" ]]; then
+    err "Downloaded file is empty: $(basename "$out")"
+    rm -f "$out"
+    return 1
+  fi
   
   echo
   msg "Download complete: $(basename "$out")"
@@ -76,11 +105,32 @@ extract_tarball(){
   
   if [[ ! -f "$tarball" ]]; then
     err "Tarball not found: $tarball"
-    return 2
+    return 1
+  fi
+  
+  # Verify tarball is valid
+  if [[ ! -s "$tarball" ]]; then
+    err "Tarball is empty: $tarball"
+    return 1
   fi
   
   info "Extracting $(basename "$tarball")..."
-  tar -xpf "$tarball" -C "$target" 2>&1 | grep -v "Ignoring unknown extended header" || true
+  
+  # Use pipefail to catch extraction errors
+  local extract_status=0
+  { tar -xpf "$tarball" -C "$target" 2>&1 || extract_status=$?; } | grep -v "Ignoring unknown extended header" || true
+  
+  if [[ $extract_status -ne 0 ]]; then
+    err "Extraction failed with exit code: $extract_status"
+    return 1
+  fi
+  
+  # Verify extraction created files
+  if [[ ! "$(ls -A "$target" 2>/dev/null)" ]]; then
+    err "Extraction completed but target directory is empty"
+    return 1
+  fi
+  
   msg "Extraction complete"
 }
 
@@ -103,10 +153,22 @@ exec_in_proot(){
   
   require_proot
   
+  if [[ ! -d "$rootfs" ]]; then
+    err "Root filesystem not found: $rootfs"
+    return 1
+  fi
+  
   proot -0 -r "$rootfs" \
     -b /dev -b /proc -b /sys \
     -w / \
     "${cmd[@]}"
+  
+  local proot_status=$?
+  if [[ $proot_status -ne 0 ]]; then
+    return $proot_status
+  fi
+  
+  return 0
 }
 
 # Compress directory to tarball
@@ -115,10 +177,38 @@ compress_tarball(){
   
   if [[ ! -d "$source" ]]; then
     err "Source directory not found: $source"
-    return 2
+    return 1
+  fi
+  
+  # Verify source directory is not empty
+  if [[ ! "$(ls -A "$source" 2>/dev/null)" ]]; then
+    err "Source directory is empty: $source"
+    return 1
   fi
   
   info "Compressing $(basename "$source")..."
-  tar -cpzf "$output" -C "$source" .
+  
+  local compress_status=0
+  tar -cpzf "$output" -C "$source" . || compress_status=$?
+  
+  if [[ $compress_status -ne 0 ]]; then
+    err "Compression failed with exit code: $compress_status"
+    # Clean up partial output
+    [[ -f "$output" ]] && rm -f "$output"
+    return 1
+  fi
+  
+  # Verify output file was created and has content
+  if [[ ! -f "$output" ]]; then
+    err "Compression completed but output file not found"
+    return 1
+  fi
+  
+  if [[ ! -s "$output" ]]; then
+    err "Compressed file is empty"
+    rm -f "$output"
+    return 1
+  fi
+  
   msg "Compression complete: $(basename "$output")"
 }
