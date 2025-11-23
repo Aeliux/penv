@@ -38,10 +38,11 @@ def calculate_sha256_from_url(url: str) -> str:
                 sha256_hash.update(chunk)
         
         checksum = sha256_hash.hexdigest()
-        print(f"  → {checksum}", file=sys.stderr)
+        print(checksum)
         return checksum
     except Exception as e:
-        print(f"  → Error: {e}", file=sys.stderr)
+        print()
+        print(f"Error: {e}", file=sys.stderr)
         return ""
 
 @dataclass(frozen=True)
@@ -59,11 +60,7 @@ class Distro(Entry):
 
 @dataclass(frozen=True)
 class Addon(Entry):
-    distroIds: List[str] = None  # Empty means compatible with all distros
-    
-    def __post_init__(self):
-        if self.distroIds is None:
-            object.__setattr__(self, 'distroIds', [])
+    distroIds: List[str] = field(default_factory=list)
 
 entries: Dict[str, List[Entry]] = {
     "distros": [],
@@ -105,43 +102,43 @@ distros.append(
 
 if __name__ == "__main__":
     import json
-    import sys
     
-    # Check if --calculate-checksums flag is provided
-    calculate_checksums = "--calculate-checksums" in sys.argv
+    calculate_checksums = True
     
     index = {
         "distros": {},
         "addons": {}
     }
     
+    print("Generating index")
+    
     for cat, target in index.items():
+        print(f"Processing {cat}")
         for entry in entries[cat]:
+            print(f"Exporting {entry} entry in {cat}")
             data = entry.export()
             
             # Calculate checksums if requested
             if calculate_checksums:
-                print(f"\nProcessing {entry.id}...", file=sys.stderr)
+                print("Calculating checksum")
                 for url_obj in entry.urls:
+                    print(f"{url_obj.arch}: {url_obj.url}")
                     if not url_obj.sha256:
                         checksum = calculate_sha256_from_url(url_obj.url)
                         if checksum:
-                            # Update the URL object with calculated checksum
-                            # Find the url in data and add sha256
                             for url_data in data['urls']:
                                 if url_data['url'] == url_obj.url:
                                     url_data['sha256'] = checksum
                                     break
-                    else:
-                        print(f"  {url_obj.arch}: Using existing checksum", file=sys.stderr)
             
             for id in [entry.id] + entry.aliases:
+                print(f"Adding alias: {id}")
                 target[id] = data
+    
+    print("Writing index.json")
     
     with open("index.json", 'w') as f:
         js = json.dumps(index, indent=2)
         f.write(js)
     
-    print("✓ Index generated successfully", file=sys.stderr)
-    if calculate_checksums:
-        print("✓ Checksums calculated and added", file=sys.stderr)
+    print("Index generated successfully")
