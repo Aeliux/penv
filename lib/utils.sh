@@ -127,6 +127,59 @@ download_file(){
   return 0
 }
 
+# Download a file without cache check (for temporary files)
+download_file_nocache(){
+  local url="$1" out="$2"
+  mkdir -p "$(dirname "$out")"
+  
+  # Check for download tool early (skip for file:// URLs)
+  if [[ ! "$url" =~ ^file:// ]] && [[ -z "$DL_TOOL" ]]; then
+    err "No download tool found. Install aria2c, curl or wget."
+    return 2
+  fi
+  
+  if [[ "$url" =~ ^file:// ]]; then
+    local file_path="${url#file://}"
+    if [[ ! -f "$file_path" ]]; then
+      err "Source file not found: $file_path"
+      return 1
+    fi
+    if ! cp "$file_path" "$out"; then
+      err "Failed to copy file: $file_path"
+      return 1
+    fi
+    return 0
+  fi
+  
+  local download_status=0
+  case "$DL_TOOL" in
+    aria2c)
+      aria2c -x16 -s16 --console-log-level=error --summary-interval=0 -o "$out" "$url" 2>&1 | grep -v "^$" || download_status=$?
+      ;;
+    curl)
+      curl -fsSL -o "$out" "$url" || download_status=$?
+      ;;
+    wget)
+      wget -q -O "$out" "$url" || download_status=$?
+      ;;
+  esac
+  
+  if [[ $download_status -ne 0 ]]; then
+    err "Download failed"
+    [[ -f "$out" ]] && rm -f "$out"
+    return 1
+  fi
+  
+  # Verify file was downloaded and has content
+  if [[ ! -f "$out" ]] || [[ ! -s "$out" ]]; then
+    err "Download failed or file is empty"
+    rm -f "$out"
+    return 1
+  fi
+  
+  return 0
+}
+
 # Extract tarball preserving permissions
 extract_tarball(){
   local tarball="$1" target="$2"

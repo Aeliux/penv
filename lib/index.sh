@@ -8,11 +8,13 @@ index::fetch_remote(){
   local temp_index
   temp_index=$(mktemp)
   
-  download_file "$INDEX_URL" "$temp_index" >&2 || {
+  # Download silently without cache check
+  info "Fetching remote index..." >&2
+  if ! download_file_nocache "$INDEX_URL" "$temp_index" >&2; then
     rm -f "$temp_index"
-    err "Failed to fetch remote index"
+    err "Failed to fetch remote index" >&2
     return 1
-  }
+  fi
   
   echo "$temp_index"
 }
