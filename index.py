@@ -264,7 +264,7 @@ if __name__ == "__main__":
     for cat, target in index.items():
         print(f"Processing {cat}")
         for entry in entries[cat]:
-            print(f"Exporting {entry} entry in {cat}")
+            print(f"Exporting {entry.id} entry in {cat}")
             data = entry.export()
             
             # Calculate checksums if requested
