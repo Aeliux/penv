@@ -1,0 +1,309 @@
+#!/usr/bin/env bash
+# penv - simple proot-based env manager (fixed & hardened)
+# Usage: penv <command> [args]
+# Commands:
+#   init
+#   available
+#   download <distro-key-or-url>
+#   create <envname> -d <distro-key-or-url>
+#   enter <envname>
+#   delete <envname>
+#   list-envs
+#   list-downloads
+#   remove-distro <distro-key-or-url>
+#   purge-cache
+#   help
+
+set -euo pipefail
+IFS=$'\n\t'
+
+# -------- Configuration --------
+PENV_DIR="${HOME}/.penv"
+CACHE_DIR="${PENV_DIR}/cache"
+ENVS_DIR="${PENV_DIR}/envs"
+BIN_DIR="${HOME}/bin"
+
+# Default distro mapping (key -> tarball URL)
+declare -A DISTROS=(
+  [ubuntu-24.04]="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz"
+  [alpine-3.22]="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz"
+)
+
+# -------- download tool detection (prefer aria2c, curl, wget) --------
+DL_TOOL=""
+if command -v aria2c >/dev/null 2>&1; then
+  DL_TOOL="aria2c"
+elif command -v curl >/dev/null 2>&1; then
+  DL_TOOL="curl"
+elif command -v wget >/dev/null 2>&1; then
+  DL_TOOL="wget"
+fi
+
+# -------- helpers --------
+msg(){ printf '\e[1;32m%s\e[0m\n' "$*"; }
+err(){ printf '\e[1;31mERROR:\e[0m %s\n' "$*" >&2; }
+ensure_dirs(){
+  mkdir -p "$CACHE_DIR" "$ENVS_DIR" "$BIN_DIR"
+}
+require_proot(){
+  if ! command -v proot >/dev/null 2>&1; then
+    err "proot is required. Install it: sudo apt update && sudo apt install -y proot"
+    exit 1
+  fi
+}
+usage(){
+  cat <<'USAGE'
+penv - proot env manager
+
+Usage:
+  penv init
+  penv available
+  penv download <distro-key-or-url>
+  penv create <envname> -d <distro-key-or-url>
+  penv enter <envname>
+  penv delete <envname>
+  penv list-envs
+  penv list-downloads
+  penv remove-distro <distro-key-or-url>
+  penv purge-cache
+  penv help
+USAGE
+}
+
+distro_resolve(){
+  local key="$1"
+  if [[ -z "$key" ]]; then
+    echo ""
+    return
+  fi
+  if [[ "$key" =~ ^https?:// ]]; then
+    echo "$key"; return
+  fi
+  if [[ -n "${DISTROS[$key]:-}" ]]; then
+    echo "${DISTROS[$key]}"; return
+  fi
+  # treat as local path
+  if [[ -f "$key" ]]; then
+    echo "file://$(realpath "$key")"; return
+  fi
+  echo ""
+}
+
+cached_tarball_for(){
+  local url="$1"
+  if [[ -z "$url" ]]; then echo ""; return; fi
+  if [[ "$url" =~ ^file:// ]]; then
+    local p="${url#file://}"
+    echo "$CACHE_DIR/$(basename "$p")"
+    return
+  fi
+  # use basename of URL (strip query)
+  local fname
+  fname="$(basename "${url%%\?*}")"
+  echo "$CACHE_DIR/$fname"
+}
+
+download_url(){
+  local url="$1"; local out="$2"
+  mkdir -p "$(dirname "$out")"
+  if [[ -f "$out" ]]; then
+    msg "Using cached: $out"
+    return 0
+  fi
+  msg "Downloading: $url -> $out"
+  if [[ "$url" =~ ^file:// ]]; then
+    cp -n "${url#file://}" "$out"
+    return 0
+  fi
+  case "$DL_TOOL" in
+    aria2c)
+      aria2c -x16 -s16 -c -o "$out" "$url"
+      ;;
+    curl)
+      curl -L --fail --retry 5 --retry-delay 2 --continue-at - -o "$out" "$url"
+      ;;
+    wget)
+      wget -c -O "$out" "$url"
+      ;;
+    *)
+      err "No download tool found. Install aria2c, curl or wget."
+      return 2
+      ;;
+  esac
+}
+
+extract_tarball_to(){
+  local tarball="$1" target="$2"
+  mkdir -p "$target"
+  if [[ "$tarball" =~ ^file:// ]]; then
+    tarball="${tarball#file://}"
+  fi
+  if [[ ! -f "$tarball" ]]; then
+    err "Tarball not found: $tarball"; return 2
+  fi
+  msg "Extracting $tarball -> $target"
+  # preserve numeric owners (if tarball contains them)
+  tar -xpf "$tarball" -C "$target"
+}
+
+list_envs(){
+  if [[ -d "$ENVS_DIR" ]]; then
+    ls -1A "$ENVS_DIR" || echo "(none)"
+  else
+    echo "(none)"
+  fi
+}
+list_cached(){
+  if [[ -d "$CACHE_DIR" ]]; then
+    ls -1A "$CACHE_DIR" || echo "(none)"
+  else
+    echo "(none)"
+  fi
+}
+
+# -------- commands --------
+cmd_init(){
+  ensure_dirs
+  msg "penv initialized."
+  msg "Cache: $CACHE_DIR"
+  msg "Envs:  $ENVS_DIR"
+  if [[ -z "$DL_TOOL" ]]; then
+    msg "Install curl/wget/aria2c for downloads. (aria2c recommended)"
+  else
+    msg "Downloader: $DL_TOOL"
+  fi
+  if ! command -v proot >/dev/null 2>&1; then
+    msg "Install proot: sudo apt update && sudo apt install -y proot"
+  fi
+}
+
+cmd_available(){
+  printf "%-20s  %s\n" "KEY" "DEFAULT URL"
+  for k in "${!DISTROS[@]}"; do
+    printf "%-20s  %s\n" "$k" "${DISTROS[$k]}"
+  done | sort
+}
+
+cmd_download(){
+  ensure_dirs
+  if [[ $# -lt 1 ]]; then err "download requires argument"; exit 2; fi
+  local key="$1"
+  local url
+  url="$(distro_resolve "$key")"
+  if [[ -z "$url" ]]; then err "Unknown distro/key: $key"; exit 2; fi
+  local tar
+  tar="$(cached_tarball_for "$url")"
+  download_url "$url" "$tar"
+}
+
+cmd_create(){
+  ensure_dirs
+  if (( $# < 3 )); then err "create usage: create <envname> -d <distro>"; exit 2; fi
+  local name="$1"; shift
+  local distro_key=""
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -d|--distro) distro_key="$2"; shift 2 ;;
+      *) err "Unknown arg $1"; exit 2 ;;
+    esac
+  done
+  if [[ -z "$distro_key" ]]; then err "distro required -d <distro-key-or-url>"; exit 2; fi
+  local url
+  url="$(distro_resolve "$distro_key")"
+  if [[ -z "$url" ]]; then err "Unknown distro: $distro_key"; exit 2; fi
+  local tar
+  tar="$(cached_tarball_for "$url")"
+  if [[ ! -f "$tar" ]]; then
+    msg "Tarball not cached; downloading..."
+    download_url "$url" "$tar"
+  fi
+  local root="$ENVS_DIR/$name"
+  if [[ -d "$root" ]]; then err "Env already exists: $name"; exit 2; fi
+  mkdir -p "$root"
+  extract_tarball_to "$tar" "$root"
+  # copy host resolv.conf for working DNS (follow symlink)
+  if [[ -f /etc/resolv.conf ]]; then
+    mkdir -p "$root/etc"
+    cp -L /etc/resolv.conf "$root/etc/resolv.conf" || true
+  fi
+  msg "Env created: $name"
+  msg "Enter with: penv enter $name"
+}
+
+cmd_enter(){
+  if (( $# < 1 )); then
+    err "enter requires env name"
+    return 2
+  fi
+
+  local name="$1"; shift
+  local root="$ENVS_DIR/$name"
+
+  if [[ ! -d "$root" ]]; then
+    err "Env not found: $name"
+    return 2
+  fi
+
+  require_proot
+  msg "Entering env $name (rootfs: $root)"
+
+  # Build command as an array so arguments are preserved correctly
+  local -a cmd
+  if (( $# == 0 )); then
+    cmd=(/bin/bash --login)
+  else
+    cmd=( "$@" )
+  fi
+
+  proot -0 -r "$root" \
+    -b /dev -b /proc -b /sys \
+    -w / \
+    "${cmd[@]}"
+}
+
+cmd_delete(){
+  if (( $# < 1 )); then err "delete requires env name"; exit 2; fi
+  local name="$1"
+  local root="$ENVS_DIR/$name"
+  if [[ ! -d "$root" ]]; then err "Env not found: $name"; exit 2; fi
+  read -p "Delete env $name ? (y/N) " yn
+  case "$yn" in [Yy]) rm -rf "$root"; msg "Deleted $root";; *) msg "Aborted";; esac
+}
+
+cmd_list_envs(){ list_envs; }
+cmd_list_downloads(){ list_cached; }
+
+cmd_remove_distro(){
+  if (( $# < 1 )); then err "remove-distro requires distro key or url"; exit 2; fi
+  local key="$1"
+  local url
+  url="$(distro_resolve "$key")"
+  if [[ -z "$url" ]]; then err "Unknown distro/key: $key"; exit 2; fi
+  local tar
+  tar="$(cached_tarball_for "$url")"
+  if [[ -f "$tar" ]]; then rm -f "$tar"; msg "Removed $tar"; else err "No cached tarball for $key"; fi
+}
+
+cmd_purge_cache(){
+  read -p "Delete all cached tarballs in $CACHE_DIR ? (y/N) " yn
+  case "$yn" in [Yy]) rm -rf "$CACHE_DIR"/*; msg "Cache purged";; *) msg "Aborted";; esac
+}
+
+# -------- dispatch --------
+if (( $# < 1 )); then usage; exit 0; fi
+cmd="$1"; shift
+
+case "$cmd" in
+  init) cmd_init ;;
+  available) cmd_available ;;
+  download) cmd_download "$@" ;;
+  create) cmd_create "$@" ;;
+  enter) cmd_enter "$@" ;;
+  delete) cmd_delete "$@" ;;
+  list-envs) cmd_list_envs ;;
+  list-downloads) cmd_list_downloads ;;
+  remove-distro) cmd_remove_distro "$@" ;;
+  purge-cache) cmd_purge_cache ;;
+  help|--help|-h) usage ;;
+  *) err "Unknown command: $cmd"; usage; exit 2 ;;
+esac
