@@ -81,8 +81,7 @@ distros.append(
         urls=[
             Url(
                 arch="amd64",
-                url="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz",
-                sha256="6bc2cde3930ad088b3bb46fa45279e96d25bc3810f209850ecbe4722711874f9"
+                url="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz"
             )
         ],
         aliases=["ubuntu-24-vanilla", "ubuntu-vanilla"]
@@ -97,8 +96,7 @@ distros.append(
         urls=[
             Url(
                 arch="amd64",
-                url="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz",
-                sha256="412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be"
+                url="https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz"
             )
         ],
         aliases=["alpine-3-vanilla", "alpine-vanilla"]
@@ -121,11 +119,21 @@ if __name__ == "__main__":
         for entry in entries[cat]:
             data = entry.export()
             
-            # Calculate checksums if requested and missing
+            # Calculate checksums if requested
             if calculate_checksums:
+                print(f"\nProcessing {entry.id}...", file=sys.stderr)
                 for url_obj in entry.urls:
                     if not url_obj.sha256:
-                        print(f"Missing checksum for {entry.id} ({url_obj.arch})", file=sys.stderr)
+                        checksum = calculate_sha256_from_url(url_obj.url)
+                        if checksum:
+                            # Update the URL object with calculated checksum
+                            # Find the url in data and add sha256
+                            for url_data in data['urls']:
+                                if url_data['url'] == url_obj.url:
+                                    url_data['sha256'] = checksum
+                                    break
+                    else:
+                        print(f"  {url_obj.arch}: Using existing checksum", file=sys.stderr)
             
             for id in [entry.id] + entry.aliases:
                 target[id] = data
@@ -135,3 +143,5 @@ if __name__ == "__main__":
         f.write(js)
     
     print("✓ Index generated successfully", file=sys.stderr)
+    if calculate_checksums:
+        print("✓ Checksums calculated and added", file=sys.stderr)

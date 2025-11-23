@@ -15,7 +15,7 @@ distro::download(){
   
   # Get distro info from remote index
   local distro_data
-  distro_data=$(index::get_distro "$distro_id")
+  distro_data=$(index::get_distro "$distro_id" || true)
   
   if [[ -z "$distro_data" ]]; then
     err "Distro not found: $distro_id"
@@ -129,9 +129,12 @@ distro::download(){
     
   else
     # Simple base distro download (already done above if needed)
+    # If user used an alias name to download, store that alias too
     if [[ "$final_id" != "$actual_distro_id" ]]; then
-      # It was downloaded using the actual ID, but user used an alias
-      msg "Distro available: ${C_BOLD}$final_id${C_RESET}"
+      # User downloaded using an alias (e.g., ubuntu-vanilla)
+      # Store the alias so they can use that name later
+      index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias"
+      msg "Distro available: ${C_BOLD}$final_id${C_RESET} (alias of $actual_distro_id)"
     fi
     info "File: $base_distro_file"
   fi
