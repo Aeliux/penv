@@ -115,13 +115,26 @@ env::shell(){
   
   require_proot
   header "Entering environment: $env_name"
-  echo -e "  ${C_DIM}Rootfs: $env_root${C_RESET}"
+  echo -e "  ${C_DIM}rootfs: $env_root${C_RESET}"
   echo
+
+  # Detect best default command
+  local -a default_cmd
+  if [[ -f "$env_root/penv/startup.sh" ]]; then
+    default_cmd=(/bin/sh /penv/startup.sh)
+  elif [[ -f "$env_root/bin/bash" ]]; then
+    default_cmd=(/bin/bash --login)
+  elif [[ -f "$env_root/bin/sh" ]]; then
+    default_cmd=(/bin/sh --login)
+  else
+    err "No suitable shell or startup script found in environment"
+    return 1
+  fi
   
-  # Build command
+  # Build final command
   local -a cmd
   if (( $# == 0 )); then
-    cmd=(/bin/bash --login)
+    cmd=("${default_cmd[@]}")
   else
     cmd=( "$@" )
   fi
