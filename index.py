@@ -100,6 +100,144 @@ distros.append(
     )
 )
 
+distros.append(
+    Distro(
+        id="debian-11-1.0fix3",
+        name="Debian 11 1.0fix3",
+        description="Debian 11 (bullseye) penv v1.0fix3 rootfs",
+        urls=[
+            Url(
+                arch="amd64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-amd64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="i386",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-i386-rootfs.tar.gz"
+            ),
+            Url(
+                arch="arm64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-arm64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="armhf",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bullseye-armhf-rootfs.tar.gz"
+            )
+        ],
+        aliases=["debian-11-1.0", "debian-11", "debian"]
+    )
+)
+
+distros.append(
+    Distro(
+        id="debian-12-1.0fix3",
+        name="Debian 12 1.0fix3",
+        description="Debian 12 (bookworm) penv v1.0fix3 rootfs",
+        urls=[
+            Url(
+                arch="amd64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-amd64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="i386",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-i386-rootfs.tar.gz"
+            ),
+            Url(
+                arch="arm64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-arm64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="armhf",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-bookworm-armhf-rootfs.tar.gz"
+            )
+        ],
+        aliases=["debian-12-1.0", "debian-12", "debian"]
+    )
+)
+
+distros.append(
+    Distro(
+        id="debian-13-1.0fix3",
+        name="Debian 13 1.0fix3",
+        description="Debian 13 (trixie) penv v1.0fix3 rootfs",
+        urls=[
+            Url(
+                arch="amd64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-amd64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="i386",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-i386-rootfs.tar.gz"
+            ),
+            Url(
+                arch="arm64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-arm64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="armhf",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/debian-trixie-armhf-rootfs.tar.gz"
+            )
+        ],
+        aliases=["debian-13-1.0", "debian-13", "debian"]
+    )
+)
+
+distros.append(
+    Distro(
+        id="ubuntu-20.04-1.0fix3",
+        name="Ubuntu 20.04 1.0fix3",
+        description="Ubuntu 20.04 (focal) penv v1.0fix3 rootfs",
+        urls=[
+            Url(
+                arch="amd64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-amd64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="i386",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-focal-i386-rootfs.tar.gz"
+            )
+        ],
+        aliases=["ubuntu-20.04-1.0", "ubuntu-20.04", "ubuntu-20", "ubuntu"]
+    )
+)
+
+distros.append(
+    Distro(
+        id="ubuntu-22.04-1.0fix3",
+        name="Ubuntu 22.04 1.0fix3",
+        description="Ubuntu 22.04 (jammy) penv v1.0fix3 rootfs",
+        urls=[
+            Url(
+                arch="amd64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-amd64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="i386",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-jammy-i386-rootfs.tar.gz"
+            )
+        ],
+        aliases=["ubuntu-22.04-1.0", "ubuntu-22.04", "ubuntu-22", "ubuntu"]
+    )
+)
+
+distros.append(
+    Distro(
+        id="ubuntu-24.04-1.0fix3",
+        name="Ubuntu 24.04 1.0fix3",
+        description="Ubuntu 24.04 (noble) penv v1.0fix3 rootfs",
+        urls=[
+            Url(
+                arch="amd64",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-amd64-rootfs.tar.gz"
+            ),
+            Url(
+                arch="i386",
+                url="https://github.com/Aeliux/penv/releases/download/debian-1.0fix3/ubuntu-noble-i386-rootfs.tar.gz"
+            )
+        ],
+        aliases=["ubuntu-24.04-1.0", "ubuntu-24.04", "ubuntu-24", "ubuntu"]
+    )
+)
+
 if __name__ == "__main__":
     import json
     
