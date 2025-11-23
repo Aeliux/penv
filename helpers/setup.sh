@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -27,8 +27,9 @@ chmod +x "$ROOTFS_DIR"/penv/startup.sh
 # Apply universal patches
 echo "Applying universal patches..."
 if [ -f helpers/patches/universal.sh ]; then
-    cp helpers/patches/universal.sh "$ROOTFS_DIR"/tmp/universal.sh
-    chmod +x "$ROOTFS_DIR"/tmp/universal.sh
+    mkdir -p "$ROOTFS_DIR/tmp"
+    cp helpers/patches/universal.sh "$ROOTFS_DIR/tmp/universal.sh"
+    chmod +x "$ROOTFS_DIR/tmp/universal.sh"
     chroot "$ROOTFS_DIR" /bin/sh /tmp/universal.sh
-    rm "$ROOTFS_DIR"/tmp/universal.sh
+    rm -f "$ROOTFS_DIR/tmp/universal.sh"
 fi

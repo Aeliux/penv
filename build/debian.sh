@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -10,6 +10,9 @@ DEBIAN_ARCH="${DEBIAN_ARCH:-amd64}"
 ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/debian-rootfs}"
 OUTPUT_FILE="${OUTPUT_FILE:-output/debian-${DEBIAN_RELEASE}-${DEBIAN_ARCH}-rootfs.tar.gz}"
 MIRROR="${MIRROR:-http://deb.debian.org/debian}"
+
+# Ensure output directory exists
+mkdir -p "$(dirname "$OUTPUT_FILE")"
 
 echo "Building Debian ${DEBIAN_RELEASE} (${DEBIAN_ARCH}) rootfs..."
 
@@ -52,7 +55,8 @@ if [ -d "$ROOTFS_DIR" ]; then
     rm -rf "$ROOTFS_DIR"
 fi
 
-mkdir -p "$ROOTFS_DIR"
+# Create parent directory if it doesn't exist
+mkdir -p "$(dirname "$ROOTFS_DIR")"
 
 # Create rootfs using debootstrap
 echo "Running debootstrap..."
@@ -66,19 +70,36 @@ rm -rf "$ROOTFS_DIR"/tmp/*
 
 # Apply penv patches
 echo "Applying penv patches..."
+if [ ! -f helpers/setup.sh ]; then
+    echo "Error: helpers/setup.sh not found"
+    exit 1
+fi
 helpers/setup.sh "$ROOTFS_DIR"
 
 # Copy debian startup script
-cp helpers/deb-start.sh "$ROOTFS_DIR"/penv/startup.d/debian.sh
-chmod +x "$ROOTFS_DIR"/penv/startup.d/debian.sh
+if [ ! -f helpers/deb-start.sh ]; then
+    echo "Error: helpers/deb-start.sh not found"
+    exit 1
+fi
+if [ ! -d "$ROOTFS_DIR/penv/startup.d" ]; then
+    echo "Error: $ROOTFS_DIR/penv/startup.d directory was not created by setup.sh"
+    exit 1
+fi
+cp helpers/deb-start.sh "$ROOTFS_DIR/penv/startup.d/debian.sh"
+chmod +x "$ROOTFS_DIR/penv/startup.d/debian.sh"
 
 # Apply Debian-specific patches
 echo "Applying Debian patches..."
 if [ -f helpers/patches/debian.sh ]; then
-    cp helpers/patches/debian.sh "$ROOTFS_DIR"/tmp/debian.sh
+    mkdir -p "$ROOTFS_DIR/tmp"
+    cp helpers/patches/debian.sh "$ROOTFS_DIR/tmp/debian.sh"
+    chmod +x "$ROOTFS_DIR/tmp/debian.sh"
     chroot "$ROOTFS_DIR" /bin/sh /tmp/debian.sh
-    rm "$ROOTFS_DIR"/tmp/debian.sh
+    rm -f "$ROOTFS_DIR/tmp/debian.sh"
 fi
+
+# Fix permissions
+helpers/fix-perm.sh "$ROOTFS_DIR"
 
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
