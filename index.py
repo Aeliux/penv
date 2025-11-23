@@ -240,8 +240,19 @@ distros.append(
 
 if __name__ == "__main__":
     import json
+    import os
     
     calculate_checksums = True
+    
+    # Load existing index.json to reuse checksums
+    existing_index = {"distros": {}, "addons": {}}
+    if os.path.exists("index.json"):
+        print("Loading existing index.json to reuse checksums")
+        try:
+            with open("index.json", 'r') as f:
+                existing_index = json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load existing index.json: {e}", file=sys.stderr)
     
     index = {
         "distros": {},
@@ -262,7 +273,23 @@ if __name__ == "__main__":
                 for url_obj in entry.urls:
                     print(f"{url_obj.arch}: {url_obj.url}")
                     if not url_obj.sha256:
-                        checksum = calculate_sha256_from_url(url_obj.url)
+                        # Try to reuse existing checksum from index.json
+                        existing_checksum = None
+                        if entry.id in existing_index.get(cat, {}):
+                            existing_entry = existing_index[cat][entry.id]
+                            for existing_url in existing_entry.get('urls', []):
+                                if existing_url['url'] == url_obj.url and existing_url.get('sha256'):
+                                    existing_checksum = existing_url['sha256']
+                                    print(f"  Reusing existing checksum: {existing_checksum}")
+                                    break
+                        
+                        # Only download if we don't have an existing checksum
+                        if existing_checksum:
+                            checksum = existing_checksum
+                        else:
+                            print(f"  No existing checksum found, downloading...")
+                            checksum = calculate_sha256_from_url(url_obj.url)
+                        
                         if checksum:
                             for url_data in data['urls']:
                                 if url_data['url'] == url_obj.url:
