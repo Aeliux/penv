@@ -224,6 +224,9 @@ extract_tarball(){
 setup_proot_env(){
   local rootfs="$1"
   
+  # Ensure essential directories exist (device files removed at build time)
+  mkdir -p "$rootfs/dev" "$rootfs/proc" "$rootfs/sys" 2>/dev/null || true
+  
   # Copy resolv.conf for DNS
   if [[ -f /etc/resolv.conf ]]; then
     mkdir -p "$rootfs/etc"

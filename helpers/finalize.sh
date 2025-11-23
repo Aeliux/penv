@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-# build/fix-perm.sh
-# This script fixes permissions in the rootfs directory.
+# build/finalize.sh
+# This script finalizes the rootfs build process.
 # It should be run with the rootfs directory as the first argument.
 
 if [ "$#" -ne 1 ]; then
@@ -12,6 +12,10 @@ if [ "$#" -ne 1 ]; then
 fi
 
 ROOTFS_DIR=$1
+
+# Remove device files (can't be extracted by non-root users anyway)
+echo "Removing device files..."
+find "$ROOTFS_DIR/dev" -type c -o -type b 2>/dev/null | xargs rm -f 2>/dev/null || true
 
 # Fix permissions for proot compatibility
 echo "Setting correct permissions for proot..."

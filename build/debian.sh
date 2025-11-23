@@ -144,8 +144,13 @@ if [ -f helpers/patches/debian.sh ]; then
     rm -f "$ROOTFS_DIR/tmp/debian.sh"
 fi
 
-# Fix permissions
-helpers/fix-perm.sh "$ROOTFS_DIR"
+# Finalize rootfs
+echo "Finalizing rootfs..."
+if [ ! -f helpers/finalize.sh ]; then
+    echo "Error: helpers/finalize.sh not found"
+    exit 1
+fi
+helpers/finalize.sh "$ROOTFS_DIR"
 
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
