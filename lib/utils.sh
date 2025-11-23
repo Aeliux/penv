@@ -251,6 +251,7 @@ exec_in_proot(){
   
   proot -0 -r "$rootfs" \
     -b /dev -b /proc -b /sys \
+    -b /etc/passwd -b /etc/group \
     -w / \
     "${cmd[@]}"
 }
