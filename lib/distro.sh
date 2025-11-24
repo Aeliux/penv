@@ -7,7 +7,7 @@
 distro::import(){
   local distro_id="$1"
   local tarball_path="$2"
-  local family="${3:-custom}"
+  local family="${3:-}"
   
   ensure_dirs
   require_jq
@@ -63,9 +63,6 @@ distro::import(){
   
   header "Importing custom distro: $distro_id"
   info "Source: $tarball_path"
-  if [[ -n "$family" && "$family" != "custom" ]]; then
-    info "Family: $family"
-  fi
   echo
   
   # Validate tarball structure by attempting a test extraction
@@ -103,6 +100,27 @@ distro::import(){
   fi
   
   msg "Tarball structure validated"
+  
+  # Auto-detect family if not provided
+  if [[ -z "$family" ]]; then
+    if [[ -f "$test_dir/penv/metadata/family" ]]; then
+      family=$(cat "$test_dir/penv/metadata/family" 2>/dev/null | tr -d '\n\r')
+      if [[ -n "$family" ]]; then
+        info "Auto-detected family from metadata: $family"
+      fi
+    fi
+    
+    if [[ -z "$family" ]]; then
+      rm -rf "$test_dir"
+      err "Could not detect distro family"
+      info "Family not found in /penv/metadata/family"
+      info "Please specify family: ${C_BOLD}penv import $distro_id $tarball_path -f <family>${C_RESET}"
+      info "Common families: debian, alpine, arch"
+      return 1
+    fi
+  else
+    info "Family: $family"
+  fi
   
   # Clean up test extraction
   rm -rf "$test_dir"
@@ -310,7 +328,9 @@ distro::modify(){
   header "Modifying distro: $distro_id"
   info "Source: $distro_id ($source_type)"
   info "Target: $new_id"
-  info "Addons: ${addons[*]}"
+  if [[ ${#addons[@]} -gt 0 ]]; then
+    info "Addons: ${addons[*]}"
+  fi
   if [[ -n "$source_family" && "$source_family" != "unknown" ]]; then
     info "Family: $source_family"
   fi
@@ -338,7 +358,11 @@ distro::modify(){
   
   echo
   msg "Modified distro created: ${C_BOLD}$new_id${C_RESET}"
-  info "Base: $distro_id + addons: ${addons[*]}"
+  if [[ ${#addons[@]} -gt 0 ]]; then
+    info "Base: $distro_id + addons: ${addons[*]}"
+  else
+    info "Base: $distro_id (manual modifications)"
+  fi
   info "File: $output_file"
   info "Create environment: ${C_BOLD}penv new <name> $new_id${C_RESET}"
   echo
@@ -541,7 +565,11 @@ distro::list_downloaded(){
         custom)
           local addons_list
           addons_list=$(echo "$addons_json" | jq -r 'join(", ")' 2>/dev/null)
-          printf "  ${C_CYAN}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (base: %s + %s)${C_RESET}\n" "$id" "$size" "$base_distro" "$addons_list"
+          if [[ -n "$addons_list" ]]; then
+            printf "  ${C_CYAN}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (base: %s + %s)${C_RESET}\n" "$id" "$size" "$base_distro" "$addons_list"
+          else
+            printf "  ${C_CYAN}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (base: %s, modified)${C_RESET}\n" "$id" "$size" "$base_distro"
+          fi
           ;;
         alias)
           printf "  ${C_MAGENTA}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (alias of %s)${C_RESET}\n" "$id" "$size" "$base_distro"
