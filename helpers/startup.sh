@@ -25,8 +25,8 @@ unset CLASSPATH
 
 
 # Set environment variables
-export HOME=${HOME:-/root}
-export USER=${USER:-root}
+export HOME="/root"
+export USER="root"
 export SHELL=${SHELL:-/bin/bash}
 export TERM=${TERM:-xterm-256color}
 export LANG=${LANG:-C.UTF-8}
@@ -48,7 +48,7 @@ fi
 # Launch shell
 for shell in /bin/bash /usr/bin/bash /bin/sh /usr/bin/sh; do
     if [ -x "$shell" ]; then
-        exec "$shell" -l
+        exec "$shell" --login
     fi
 done
 
