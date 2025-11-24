@@ -11,6 +11,19 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
+# Unset host environment variables that may interfere
+unset LD_PRELOAD
+unset LD_LIBRARY_PATH
+unset PYTHONPATH
+unset PERL5LIB
+unset RUBYLIB
+unset GEM_PATH
+unset GOPATH
+unset NODE_PATH
+unset JAVA_HOME
+unset CLASSPATH
+
+
 # Set environment variables
 export HOME=${HOME:-/root}
 export USER=${USER:-root}
@@ -18,7 +31,7 @@ export SHELL=${SHELL:-/bin/bash}
 export TERM=${TERM:-xterm-256color}
 export LANG=${LANG:-C.UTF-8}
 export LC_ALL=${LC_ALL:-C.UTF-8}
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SYSTEMD_OFFLINE=1
 
 # Ensure home directory exists
