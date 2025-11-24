@@ -33,6 +33,10 @@ case "$command" in
   download|dl)
     cmd::download "$@"
     ;;
+  # Import rootfs tarball
+  import)
+    cmd::import "$@"
+    ;;
   # Create environment
   create|new)
     cmd::create "$@"

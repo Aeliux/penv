@@ -33,6 +33,44 @@ cmd::init(){
   echo
 }
 
+cmd::import(){
+  if [[ $# -lt 2 ]]; then
+    err "Usage: penv import <distro-id> <tarball-path>"
+    echo -e "       penv import <distro-id> <tarball-path> [-f <family>]"
+    info "Import a custom rootfs tarball as a distro"
+    echo -e "  ${C_DIM}<distro-id>${C_RESET}     Unique identifier for the imported distro"
+    echo -e "  ${C_DIM}<tarball-path>${C_RESET} Path to the rootfs tarball (.tar.gz)"
+    echo -e "  ${C_DIM}-f <family>${C_RESET}    Optional: distro family (debian, alpine, arch, etc.)"
+    return 2
+  fi
+  
+  local distro_id="$1"
+  local tarball_path="$2"
+  shift 2
+  
+  local family=""
+  
+  # Parse optional arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -f|--family)
+        if [[ -z "$2" ]]; then
+          err "Option -f requires a value"
+          return 2
+        fi
+        family="$2"
+        shift 2
+        ;;
+      *)
+        err "Unknown option: $1"
+        return 2
+        ;;
+    esac
+  done
+  
+  distro::import "$distro_id" "$tarball_path" "$family"
+}
+
 cmd::download(){
   local list_mode=false
   local custom_name=""
@@ -202,6 +240,9 @@ cmd::usage(){
   echo -e "      ${C_DIM}-l, --list${C_RESET}                  List available distros"
   echo -e "      ${C_DIM}-n, --name <name>${C_RESET}           Save with custom name ${C_DIM}(required with -a)${C_RESET}"
   echo -e "      ${C_DIM}-a, --addon <id>${C_RESET}            Apply addon (can use multiple times)"
+  echo -e "  ${C_GREEN}penv import${C_RESET} ${C_YELLOW}<id>${C_RESET} ${C_YELLOW}<tarball>${C_RESET}        Import custom rootfs tarball"
+  echo -e "    ${C_DIM}Options:${C_RESET}"
+  echo -e "      ${C_DIM}-f, --family <name>${C_RESET}         Set distro family (debian, alpine, etc.)"
   echo -e "  ${C_GREEN}penv create${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}     Create new environment"
   echo -e "    ${C_DIM}Options:${C_RESET}"
   echo -e "      ${C_DIM}-l, --list${C_RESET}                  List downloaded distros"
@@ -220,6 +261,10 @@ cmd::usage(){
   echo -e "${C_BOLD}EXAMPLES:${C_RESET}"
   echo "  # Download a vanilla distro"
   echo "  penv download ubuntu-24.04-vanilla"
+  echo
+  echo "  # Import a custom rootfs"
+  echo "  penv import my-custom-distro /path/to/rootfs.tar.gz"
+  echo "  penv import my-alpine alpine-rootfs.tar.gz -f alpine"
   echo
   echo "  # Download with custom name (required for addons)"
   echo "  penv download ubuntu-24.04-vanilla -n my-dev-env"

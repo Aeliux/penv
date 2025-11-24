@@ -3,6 +3,146 @@
 
 # Namespace: distro::
 
+# Import a custom rootfs tarball as a distro
+distro::import(){
+  local distro_id="$1"
+  local tarball_path="$2"
+  local family="${3:-custom}"
+  
+  ensure_dirs
+  require_jq
+  
+  # Validate distro ID
+  if ! index::validate_name "$distro_id"; then
+    return 1
+  fi
+  
+  # Normalize tarball path
+  if [[ "$tarball_path" != /* ]]; then
+    tarball_path="$PWD/$tarball_path"
+  fi
+  
+  # Check if tarball exists
+  if [[ ! -f "$tarball_path" ]]; then
+    err "Tarball not found: $tarball_path"
+    return 1
+  fi
+  
+  # Check if tarball is readable
+  if [[ ! -r "$tarball_path" ]]; then
+    err "Cannot read tarball: $tarball_path"
+    return 1
+  fi
+  
+  # Check if tarball has content
+  if [[ ! -s "$tarball_path" ]]; then
+    err "Tarball is empty: $tarball_path"
+    return 1
+  fi
+  
+  # Validate tarball is actually a tar/gzip file
+  local file_type
+  file_type=$(file -b "$tarball_path" 2>/dev/null || echo "")
+  
+  if [[ ! "$file_type" =~ (gzip|tar|compressed) ]]; then
+    err "File does not appear to be a valid tarball: $tarball_path"
+    info "Detected type: $file_type"
+    warn "Continuing anyway - extraction will fail if format is invalid"
+  fi
+  
+  # Check if distro ID already exists
+  index::init_local
+  local exists
+  exists=$(jq -r ".distros[\"$distro_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
+  
+  if [[ -n "$exists" ]]; then
+    err "Distro ID already exists: $distro_id"
+    info "Use a different ID or clean existing: ${C_BOLD}penv clean $distro_id${C_RESET}"
+    return 1
+  fi
+  
+  header "Importing custom distro: $distro_id"
+  info "Source: $tarball_path"
+  if [[ -n "$family" && "$family" != "custom" ]]; then
+    info "Family: $family"
+  fi
+  echo
+  
+  # Validate tarball structure by attempting a test extraction
+  info "Validating tarball structure..."
+  local test_dir
+  test_dir=$(mktemp -d)
+  
+  if ! tar -tzf "$tarball_path" >/dev/null 2>&1; then
+    rm -rf "$test_dir"
+    err "Invalid tarball format or corrupted file"
+    return 1
+  fi
+  
+  # Extract to test directory to verify it's a valid rootfs
+  if ! extract_tarball "$tarball_path" "$test_dir"; then
+    rm -rf "$test_dir"
+    err "Failed to extract tarball"
+    return 1
+  fi
+  
+  # Verify it looks like a rootfs (has at least one of these directories)
+  local has_rootfs_structure=false
+  for dir in bin usr etc lib sbin; do
+    if [[ -d "$test_dir/$dir" ]]; then
+      has_rootfs_structure=true
+      break
+    fi
+  done
+  
+  if [[ "$has_rootfs_structure" == "false" ]]; then
+    rm -rf "$test_dir"
+    err "Tarball does not appear to contain a valid rootfs structure"
+    info "Expected at least one of: bin, usr, etc, lib, sbin"
+    return 1
+  fi
+  
+  msg "Tarball structure validated"
+  
+  # Clean up test extraction
+  rm -rf "$test_dir"
+  
+  # Copy tarball to cache with distro ID name
+  local cache_file="$CACHE_DIR/${distro_id}.tar.gz"
+  info "Copying to cache..."
+  
+  if ! cp "$tarball_path" "$cache_file"; then
+    err "Failed to copy tarball to cache"
+    return 1
+  fi
+  
+  # Verify copied file
+  if [[ ! -f "$cache_file" ]] || [[ ! -s "$cache_file" ]]; then
+    err "Cache file verification failed"
+    rm -f "$cache_file"
+    return 1
+  fi
+  
+  # Store in local index as imported distro
+  if ! index::store_downloaded "$distro_id" "$cache_file" "" "[]" "imported" "$family"; then
+    err "Failed to update local index"
+    rm -f "$cache_file"
+    return 1
+  fi
+  
+  local size
+  size=$(du -sh "$cache_file" 2>/dev/null | cut -f1)
+  
+  echo
+  msg "Successfully imported: ${C_BOLD}$distro_id${C_RESET}"
+  info "Size: $size"
+  info "File: $cache_file"
+  info "Create environment: ${C_BOLD}penv create <name> $distro_id${C_RESET}"
+  echo
+  
+  return 0
+}
+
 # Download a distro
 distro::download(){
   local distro_id="$1"
@@ -268,6 +408,9 @@ distro::list_downloaded(){
           ;;
         alias)
           printf "  ${C_MAGENTA}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (alias of %s)${C_RESET}\n" "$id" "$size" "$base_distro"
+          ;;
+        imported)
+          printf "  ${C_YELLOW}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s (imported)${C_RESET}\n" "$id" "$size"
           ;;
         *)
           printf "  ${C_GREEN}*${C_RESET} ${C_BOLD}%-30s${C_RESET} ${C_DIM}%s${C_RESET}\n" "$id" "$size"
