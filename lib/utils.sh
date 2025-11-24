@@ -13,6 +13,11 @@ ensure_dirs(){
 }
 
 require_proot(){
+  # Skip proot check if running as root (will use chroot instead)
+  if [[ $EUID -eq 0 ]]; then
+    return 0
+  fi
+  
   if ! command -v proot >/dev/null 2>&1; then
     err "proot is required. Install it: sudo apt update && sudo apt install -y proot"
     exit 1
@@ -273,29 +278,49 @@ setup_proot_env(){
   return 0
 }
 
-# Execute command in proot environment
+# Execute command in proot environment (or chroot if running as root)
 exec_in_proot(){
   local rootfs="$1"
   shift
   local cmd=("$@")
-  
-  require_proot
   
   if [[ ! -d "$rootfs" ]]; then
     err "Root filesystem not found: $rootfs"
     return 1
   fi
   
-  # Change to rootfs directory to fix proot working directory issues
-  # When proot is launched from outside the rootfs with -r <path>,
-  # the current directory (.) gets confused. Using -r . from inside
-  # the rootfs directory fixes this.
-  cd "$rootfs" || return 1
-  
-  proot -0 -r . \
-    -b /dev -b /proc -b /sys \
-    -w / \
-    "${cmd[@]}"
+  # Check if running as root (UID 0)
+  if [[ $EUID -eq 0 ]]; then
+    # Mount necessary pseudo-filesystems
+    mount --bind /dev "$rootfs/dev" 2>/dev/null || true
+    mount --bind /proc "$rootfs/proc" 2>/dev/null || true
+    mount --bind /sys "$rootfs/sys" 2>/dev/null || true
+    
+    # Execute in chroot
+    chroot "$rootfs" "${cmd[@]}"
+    local exit_code=$?
+    
+    # Cleanup mounts
+    umount "$rootfs/dev" 2>/dev/null || true
+    umount "$rootfs/proc" 2>/dev/null || true
+    umount "$rootfs/sys" 2>/dev/null || true
+    
+    return $exit_code
+  else
+    # Use proot for non-root users
+    require_proot
+    
+    # Change to rootfs directory to fix proot working directory issues
+    # When proot is launched from outside the rootfs with -r <path>,
+    # the current directory (.) gets confused. Using -r . from inside
+    # the rootfs directory fixes this.
+    cd "$rootfs" || return 1
+    
+    proot -0 -r . \
+      -b /dev -b /proc -b /sys \
+      -w / \
+      "${cmd[@]}"
+  fi
 }
 
 # Compress directory to tarball

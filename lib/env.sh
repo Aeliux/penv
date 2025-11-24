@@ -116,6 +116,11 @@ env::shell(){
   require_proot
   header "Entering environment: $env_name"
   echo -e "  ${C_DIM}rootfs: $env_root${C_RESET}"
+  if [[ $EUID -eq 0 ]]; then
+    echo -e "  ${C_DIM}mode: chroot (running as root)${C_RESET}"
+  else
+    echo -e "  ${C_DIM}mode: proot${C_RESET}"
+  fi
   echo
 
   # Detect best default command
