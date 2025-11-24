@@ -56,11 +56,12 @@ class Entry(Exportable):
 
 @dataclass(frozen=True)
 class Distro(Entry):
-    pass
+    family: str
 
 @dataclass(frozen=True)
 class Addon(Entry):
     distroIds: List[str] = field(default_factory=list)
+    distroFamilies: List[str] = field(default_factory=list)
 
 entries: Dict[str, List[Entry]] = {
     "distros": [],
@@ -125,6 +126,7 @@ def add_penv_distro(
     
     distros.append(
         Distro(
+            family=family,
             id=distro_id,
             name=f"{distro_base.capitalize()} {version} {release}",
             description=f"{distro_base.capitalize()} {version} ({codename}) penv v{release} rootfs",
@@ -136,6 +138,7 @@ def add_penv_distro(
 # Vanilla distros (non-penv)
 distros.append(
     Distro(
+        family="debian",
         id="ubuntu-24.04-vanilla",
         name="Ubuntu 24.04 vanilla",
         description="Ubuntu 24.04 base rootfs",
@@ -151,6 +154,7 @@ distros.append(
 
 distros.append(
     Distro(
+        family="alpine",
         id="alpine-3.22-vanilla",
         name="Alpine 3.22 vanilla",
         description="Alpine linux 3.22 mini rootfs",
