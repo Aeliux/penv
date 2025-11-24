@@ -15,10 +15,27 @@ if [ "$#" -ne 1 ]; then
 fi
 
 ROOTFS_DIR=$1
+timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Create penv dirs
 mkdir -p "$ROOTFS_DIR"/penv
+mkdir -p "$ROOTFS_DIR"/penv/metadata
 mkdir -p "$ROOTFS_DIR"/penv/startup.d
+
+# Write metadata in two formats
+echo "1" > "$ROOTFS_DIR"/penv/metadata/version
+echo "$FAMILY" > "$ROOTFS_DIR"/penv/metadata/family
+echo "$DISTRO" > "$ROOTFS_DIR"/penv/metadata/distro
+echo "$timestamp" > "$ROOTFS_DIR"/penv/metadata/timestamp
+
+cat > "$ROOTFS_DIR"/penv/metadata.json <<EOF
+{
+  "version": 1,
+  "family": "$FAMILY",
+  "distro": "$DISTRO",
+  "timestamp": "$timestamp"
+}
+EOF
 
 # Copy startup script
 cp helpers/startup.sh "$ROOTFS_DIR"/penv/startup.sh

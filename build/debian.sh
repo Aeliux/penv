@@ -5,6 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Configuration
+FAMILY="debian"
 DISTRO="${DISTRO:-debian}"  # debian or ubuntu
 DISTRO_RELEASE="${DISTRO_RELEASE:-}"
 DISTRO_ARCH="${DISTRO_ARCH:-amd64}"
@@ -120,7 +121,7 @@ if [ ! -f helpers/setup.sh ]; then
     echo "Error: helpers/setup.sh not found"
     exit 1
 fi
-helpers/setup.sh "$ROOTFS_DIR"
+FAMILY="$FAMILY" DISTRO="$DISTRO" helpers/setup.sh "$ROOTFS_DIR"
 
 # Copy debian startup script
 if [ ! -f helpers/deb-start.sh ]; then
