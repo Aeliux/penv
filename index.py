@@ -175,12 +175,25 @@ release = "1.1"
 # Debian versions
 add_penv_distro(family="debian", distro_base="debian", version="11", codename="bullseye", release=release)
 add_penv_distro(family="debian", distro_base="debian", version="12", codename="bookworm", release=release)
+add_penv_distro(family="debian", distro_base="debian", version="13", codename="trixie", release=release)
+
+# Ubuntu versions
+add_penv_distro(family="debian", distro_base="ubuntu", version="20.04", codename="focal", release=release, archs=["amd64", "i386"])
+add_penv_distro(family="debian", distro_base="ubuntu", version="22.04", codename="jammy", release=release, archs=["amd64", "i386"])
+add_penv_distro(family="debian", distro_base="ubuntu", version="24.04", codename="noble", release=release, archs=["amd64", "i386"])
+
+release = "1.2"
+
+# Debian versions
+add_penv_distro(family="debian", distro_base="debian", version="11", codename="bullseye", release=release)
+add_penv_distro(family="debian", distro_base="debian", version="12", codename="bookworm", release=release)
 add_penv_distro(family="debian", distro_base="debian", version="13", codename="trixie", release=release, is_latest=True)
 
 # Ubuntu versions
 add_penv_distro(family="debian", distro_base="ubuntu", version="20.04", codename="focal", release=release, archs=["amd64", "i386"])
 add_penv_distro(family="debian", distro_base="ubuntu", version="22.04", codename="jammy", release=release, archs=["amd64", "i386"])
 add_penv_distro(family="debian", distro_base="ubuntu", version="24.04", codename="noble", release=release, archs=["amd64", "i386"], is_latest=True)
+
 
 if __name__ == "__main__":
     import json
