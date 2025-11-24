@@ -17,6 +17,27 @@ require_proot(){
     err "proot is required. Install it: sudo apt update && sudo apt install -y proot"
     exit 1
   fi
+  
+  # Check proot version and warn if too old
+  local version_output
+  version_output=$(proot --version 2>&1)
+  
+  # Extract version number (format: v5.4.0 or 5.1.0)
+  local version
+  version=$(echo "$version_output" | grep -oP 'v?\d+\.\d+\.\d+' | head -1 | sed 's/^v//')
+  
+  if [[ -n "$version" ]]; then
+    local major minor patch
+    IFS='.' read -r major minor patch <<< "$version"
+    
+    # Check if version < 5.4.0
+    if [[ "$major" -lt 5 ]] || [[ "$major" -eq 5 && "$minor" -lt 4 ]]; then
+      warn "proot ${version} detected - this version has a critical bug!"
+      warn "Relative paths fail after 'cd' in glibc distributions (Debian/Ubuntu)"
+      warn "Upgrade to proot v5.4.0+ for full functionality"
+      echo ""
+    fi
+  fi
 }
 
 require_jq(){
