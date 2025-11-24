@@ -123,35 +123,12 @@ env::shell(){
   fi
   echo
 
-  # Detect best default command
-  local -a default_cmd
-  if [[ -f "$env_root/penv/startup.sh" ]]; then
-    default_cmd=(/bin/sh /penv/startup.sh)
-  elif [[ -f "$env_root/bin/bash" ]]; then
-    default_cmd=(/bin/bash --login)
-  elif [[ -f "$env_root/bin/sh" ]]; then
-    default_cmd=(/bin/sh --login)
-  else
-    default_cmd=""
-  fi
-
   export PENV_ENV_MODE="environment"
   export PENV_ENV_NAME="$env_name"
   
-  # Build final command
-  local -a cmd
-  if (( $# == 0 )); then
-    if [[ -z "${default_cmd}" ]]; then
-      err "No default shell found in environment: $env_name"
-      info "Specify a command to run, e.g.: ${C_BOLD}penv shell $env_name /bin/sh${C_RESET}"
-      return 1
-    fi
-    cmd=("${default_cmd[@]}")
-  else
-    cmd=( "$@" )
-  fi
-  
-  exec_in_proot "$env_root" "${cmd[@]}"
+  # Pass command to exec_in_proot (empty array if no args)
+  # exec_in_proot will handle shell detection
+  exec_in_proot "$env_root" "$@"
 }
 
 # Delete environment

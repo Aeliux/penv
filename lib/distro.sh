@@ -256,7 +256,8 @@ distro::download(){
 distro::modify(){
   local distro_id="$1"
   local new_id="$2"
-  shift 2
+  local open_shell="$3"
+  shift 3
   local addons=("$@")
   
   ensure_dirs
@@ -288,8 +289,21 @@ distro::modify(){
   fi
   
   # Get family and type from local index
+  # First try the distro_id directly
   local distro_entry
   distro_entry=$(jq -r ".distros[\"$distro_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
+  
+  # If not found or if it's an alias, get the base distro's metadata
+  if [[ -z "$distro_entry" ]] || [[ "$(echo "$distro_entry" | jq -r '.type // "base"')" == "alias" ]]; then
+    # Find the base distro that owns this file
+    local base_distro_id
+    base_distro_id=$(jq -r --arg file "$source_file" '.distros | to_entries[] | select(.value.file == $file and (.value.type // "base") != "alias") | .key' "$LOCAL_INDEX" 2>/dev/null | head -1)
+    
+    if [[ -n "$base_distro_id" ]]; then
+      distro_entry=$(jq -r ".distros[\"$base_distro_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
+    fi
+  fi
+  
   source_family=$(echo "$distro_entry" | jq -r '.family // "unknown"')
   source_type=$(echo "$distro_entry" | jq -r '.type // "base"')
   
@@ -307,9 +321,16 @@ distro::modify(){
   
   local output_file="$CACHE_DIR/${new_id}.tar.gz"
   
-  # Apply addons to source distro
-  if ! distro::apply_addons "$source_file" "$output_file" "$distro_id" "$source_family" "${addons[@]}"; then
-    return 1
+  # Apply addons to source distro (if any)
+  if [[ ${#addons[@]} -gt 0 ]]; then
+    if ! distro::apply_addons_and_shell "$source_file" "$output_file" "$distro_id" "$source_family" "$open_shell" "${addons[@]}"; then
+      return 1
+    fi
+  else
+    # No addons, just open shell if requested
+    if ! distro::shell_and_pack "$source_file" "$output_file" "$open_shell"; then
+      return 1
+    fi
   fi
   
   # Store modified distro with metadata
@@ -325,13 +346,14 @@ distro::modify(){
   return 0
 }
 
-# Apply addons to a distro
-distro::apply_addons(){
+# Apply addons and optionally open shell for manual modifications
+distro::apply_addons_and_shell(){
   local source_tarball="$1"
   local output_file="$2"
   local distro_id="$3"
   local distro_family="$4"
-  shift 4
+  local open_shell="$5"
+  shift 5
   local addons=("$@")
   
   require_proot
@@ -404,6 +426,79 @@ distro::apply_addons(){
     # Cleanup addon script
     rm -f "$addon_script"
   done
+  
+  # Open interactive shell if requested
+  if [[ "$open_shell" == "true" ]]; then
+    echo
+    header "Manual Modification Shell"
+    info "You are now in the distro rootfs"
+    info "Make any manual changes you need"
+    warn "Changes will be saved when you exit the shell"
+    echo
+    
+    if ! launch_shell "$temp_root"; then
+      rm -rf "$temp_root"
+      err "Failed to launch shell"
+      return 1
+    fi
+    
+    echo
+    info "Continuing with packaging..."
+  fi
+  
+  # Compress modified rootfs
+  compress_tarball "$temp_root" "$output_file" || {
+    rm -rf "$temp_root"
+    err "Failed to compress modified distro"
+    return 1
+  }
+  
+  # Cleanup
+  rm -rf "$temp_root"
+  
+  return 0
+}
+
+# Open shell and pack distro (no addons)
+distro::shell_and_pack(){
+  local source_tarball="$1"
+  local output_file="$2"
+  local open_shell="$3"
+  
+  local temp_root
+  temp_root=$(mktemp -d)
+  
+  # Extract original
+  info "Extracting base distro..."
+  extract_tarball "$source_tarball" "$temp_root" || {
+    rm -rf "$temp_root"
+    err "Failed to extract base distro"
+    return 1
+  }
+  
+  export PENV_ENV_MODE="mod"
+
+  # Setup proot environment
+  setup_proot_env "$temp_root"
+  
+  # Open interactive shell
+  if [[ "$open_shell" == "true" ]]; then
+    echo
+    header "Manual Modification Shell"
+    info "You are now in the distro rootfs"
+    info "Make any manual changes you need"
+    warn "Changes will be saved when you exit the shell"
+    echo
+    
+    if ! launch_shell "$temp_root"; then
+      rm -rf "$temp_root"
+      err "Failed to launch shell"
+      return 1
+    fi
+    
+    echo
+    info "Continuing with packaging..."
+  fi
   
   # Compress modified rootfs
   compress_tarball "$temp_root" "$output_file" || {

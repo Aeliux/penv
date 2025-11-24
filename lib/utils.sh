@@ -278,6 +278,34 @@ setup_proot_env(){
   return 0
 }
 
+# Find available shell in rootfs
+find_shell(){
+  local rootfs="$1"
+  
+  # Try shells in order of preference
+  for shell in /bin/bash /usr/bin/bash /bin/sh /usr/bin/sh; do
+    # Check if file or symlink exists
+    if [[ -e "$rootfs$shell" ]] || [[ -L "$rootfs$shell" ]]; then
+      echo "$shell"
+      return 0
+    fi
+  done
+  
+  return 1
+}
+
+# Launch interactive shell in rootfs
+launch_shell(){
+  local rootfs="$1"
+  
+  info "Launching shell..."
+  info "Type 'exit' when done to return and continue..."
+  echo
+  
+  # exec_in_proot will detect the best shell automatically
+  exec_in_proot "$rootfs"
+}
+
 # Execute command in proot environment (or chroot if running as root)
 exec_in_proot(){
   local rootfs="$1"
@@ -287,6 +315,24 @@ exec_in_proot(){
   if [[ ! -d "$rootfs" ]]; then
     err "Root filesystem not found: $rootfs"
     return 1
+  fi
+  
+  # If no command provided, detect best default
+  if [[ ${#cmd[@]} -eq 0 ]]; then
+    # Priority 1: Use startup script if available
+    if [[ -f "$rootfs/penv/startup.sh" ]]; then
+      cmd=(/bin/sh /penv/startup.sh)
+    else
+      # Priority 2: Find available shell
+      local shell_path
+      shell_path=$(find_shell "$rootfs")
+      if [[ -n "$shell_path" ]]; then
+        cmd=("$shell_path" --login)
+      else
+        err "No shell found in rootfs"
+        return 1
+      fi
+    fi
   fi
   
   # Check if running as root (UID 0)

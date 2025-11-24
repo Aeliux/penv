@@ -75,6 +75,7 @@ cmd::mod(){
   local distro_id=""
   local new_name=""
   local addons=()
+  local open_shell=false
   
   # Parse arguments
   while [[ $# -gt 0 ]]; do
@@ -95,6 +96,10 @@ cmd::mod(){
         addons+=("$2")
         shift 2
         ;;
+      -s|--shell)
+        open_shell=true
+        shift
+        ;;
       -*)
         err "Unknown option: $1"
         return 2
@@ -112,27 +117,37 @@ cmd::mod(){
   done
   
   if [[ -z "$distro_id" ]]; then
-    err "Usage: penv mod <distro-id> -a <addon> ... -n <new-id>"
-    info "Modify a distro (local or downloaded) by applying addons"
+    err "Usage: penv mod <distro-id> [-a <addon> ...] -n <new-id> [-s]"
+    info "Modify a distro (local or downloaded) by applying addons and/or manual changes"
     echo -e "  ${C_DIM}<distro-id>${C_RESET}  Base distro ID from local cache"
-    echo -e "  ${C_DIM}-a <addon>${C_RESET}   Addon ID (can use multiple times)"
+    echo -e "  ${C_DIM}-a <addon>${C_RESET}   Addon ID (can use multiple times, optional with -s)"
     echo -e "  ${C_DIM}-n <new-id>${C_RESET}  New distro ID for modified version ${C_DIM}(required)${C_RESET}"
+    echo -e "  ${C_DIM}-s, --shell${C_RESET}  Open interactive shell for manual modifications"
     return 2
   fi
   
-  if [[ ${#addons[@]} -eq 0 ]]; then
-    err "At least one addon is required"
+  if [[ ${#addons[@]} -eq 0 ]] && [[ "$open_shell" == "false" ]]; then
+    err "At least one addon or -s option is required"
     info "Usage: penv mod $distro_id -a <addon> -n <new-id>"
+    info "   Or: penv mod $distro_id -s -n <new-id>"
     return 2
   fi
   
   if [[ -z "$new_name" ]]; then
     err "New distro ID is required (-n option)"
-    info "Usage: penv mod $distro_id -a ${addons[0]} -n <new-id>"
+    if [[ ${#addons[@]} -gt 0 ]]; then
+      info "Usage: penv mod $distro_id -a ${addons[0]} -n <new-id>"
+    else
+      info "Usage: penv mod $distro_id -s -n <new-id>"
+    fi
     return 2
   fi
   
-  distro::modify "$distro_id" "$new_name" "${addons[@]}"
+  if [[ ${#addons[@]} -gt 0 ]]; then
+    distro::modify "$distro_id" "$new_name" "$open_shell" "${addons[@]}"
+  else
+    distro::modify "$distro_id" "$new_name" "$open_shell"
+  fi
 }
 
 cmd::get(){
@@ -335,9 +350,10 @@ cmd::usage(){
   echo -e "  ${C_GREEN}penv import${C_RESET} ${C_YELLOW}<id>${C_RESET} ${C_YELLOW}<tarball>${C_RESET}        Import custom rootfs tarball"
   echo -e "    ${C_DIM}Options:${C_RESET}"
   echo -e "      ${C_DIM}-f, --family <name>${C_RESET}         Set distro family (debian, alpine, etc.)"
-  echo -e "  ${C_GREEN}penv mod${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}              Modify distro with addons"
+  echo -e "  ${C_GREEN}penv mod${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}              Modify distro with addons/shell"
   echo -e "    ${C_DIM}Options:${C_RESET}"
   echo -e "      ${C_DIM}-a, --addon <id>${C_RESET}            Apply addon (can use multiple times)"
+  echo -e "      ${C_DIM}-s, --shell${C_RESET}                 Open shell for manual modifications"
   echo -e "      ${C_DIM}-n, --name <name>${C_RESET}           Save as new distro ID ${C_DIM}(required)${C_RESET}"
   echo -e "  ${C_GREEN}penv new${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}      Create new environment"
   echo -e "    ${C_DIM}Options:${C_RESET}"
@@ -366,6 +382,10 @@ cmd::usage(){
   echo "  # Modify distro with addons"
   echo "  penv mod ubuntu-24.04-vanilla -a nodejs -a python -n ubuntu-dev"
   echo "  penv mod my-custom -a build-tools -n my-custom-dev"
+  echo
+  echo "  # Modify with shell (manual changes)"
+  echo "  penv mod ubuntu-24.04-vanilla -s -n ubuntu-custom"
+  echo "  penv mod ubuntu-dev -a python -s -n ubuntu-dev-plus  # addons + shell"
   echo
   echo "  # Create and use environment"
   echo "  penv new myenv ubuntu-24.04-vanilla"

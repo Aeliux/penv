@@ -109,12 +109,6 @@ else
     debootstrap --arch="$DISTRO_ARCH" --variant=minbase --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR"
 fi
 
-# Basic cleanup
-echo "Cleaning up rootfs..."
-rm -rf "$ROOTFS_DIR"/var/cache/apt/archives/*.deb
-rm -rf "$ROOTFS_DIR"/var/lib/apt/lists/*
-rm -rf "$ROOTFS_DIR"/tmp/*
-
 # Apply penv patches
 echo "Applying penv patches..."
 if [ ! -f helpers/setup.sh ]; then
@@ -123,17 +117,12 @@ if [ ! -f helpers/setup.sh ]; then
 fi
 FAMILY="$FAMILY" DISTRO="$DISTRO" helpers/setup.sh "$ROOTFS_DIR"
 
-# Copy debian startup script
-if [ ! -f helpers/deb-start.sh ]; then
-    echo "Error: helpers/deb-start.sh not found"
-    exit 1
-fi
-if [ ! -d "$ROOTFS_DIR/penv/startup.d" ]; then
-    echo "Error: $ROOTFS_DIR/penv/startup.d directory was not created by setup.sh"
-    exit 1
-fi
-cp helpers/deb-start.sh "$ROOTFS_DIR/penv/startup.d/debian.sh"
-chmod +x "$ROOTFS_DIR/penv/startup.d/debian.sh"
+# Copy debian scripts
+cp helpers/deb-start.sh "$ROOTFS_DIR/penv/startup.d/00-debian.sh" || exit 1
+cp helpers/deb-mod-cleanup.sh "$ROOTFS_DIR/penv/cleanup.d/00-deb-mod-cleanup.sh" || exit 1
+
+chmod +x "$ROOTFS_DIR/penv/startup.d/00-debian.sh"
+chmod +x "$ROOTFS_DIR/penv/cleanup.d/00-deb-mod-cleanup.sh"
 
 # Apply Debian-based distro patches
 echo "Applying ${DISTRO^}-based patches..."
@@ -144,6 +133,12 @@ if [ -f helpers/patches/debian.sh ]; then
     chroot "$ROOTFS_DIR" /bin/sh /tmp/debian.sh
     rm -f "$ROOTFS_DIR/tmp/debian.sh"
 fi
+
+# Basic cleanup
+echo "Cleaning up rootfs..."
+rm -rf "$ROOTFS_DIR"/var/cache/apt/archives/*.deb
+rm -rf "$ROOTFS_DIR"/var/lib/apt/lists/*
+rm -rf "$ROOTFS_DIR"/tmp/*
 
 # Finalize rootfs
 echo "Finalizing rootfs..."

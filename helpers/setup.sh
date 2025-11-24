@@ -21,6 +21,7 @@ timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 mkdir -p "$ROOTFS_DIR"/penv
 mkdir -p "$ROOTFS_DIR"/penv/metadata
 mkdir -p "$ROOTFS_DIR"/penv/startup.d
+mkdir -p "$ROOTFS_DIR"/penv/cleanup.d
 
 # Write metadata in two formats
 echo "1" > "$ROOTFS_DIR"/penv/metadata/version
