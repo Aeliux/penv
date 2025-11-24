@@ -342,6 +342,7 @@ exec_in_proot(){
     mount --bind /proc "$rootfs/proc" 2>/dev/null || true
     mount --bind /sys "$rootfs/sys" 2>/dev/null || true
     
+    export PENV_ENV_PARENT="chroot"
     # Execute in chroot
     chroot "$rootfs" "${cmd[@]}"
     local exit_code=$?
@@ -360,12 +361,14 @@ exec_in_proot(){
     # When proot is launched from outside the rootfs with -r <path>,
     # the current directory (.) gets confused. Using -r . from inside
     # the rootfs directory fixes this.
-    cd "$rootfs" || return 1
+    pushd "$rootfs" >/dev/null || return 1
     
     proot -0 -r . \
       -b /dev -b /proc -b /sys \
       -w / \
       "${cmd[@]}"
+    
+    popd >/dev/null || return 1
   fi
 }
 

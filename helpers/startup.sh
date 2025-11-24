@@ -65,7 +65,7 @@ export SHELL=${SHELL:-/bin/bash}
 #export TERM=${TERM:-xterm-256color}
 export LANG=${LANG:-C.UTF-8}
 export LC_ALL=${LC_ALL:-C.UTF-8}
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/games:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SYSTEMD_OFFLINE=1
 
 # Ensure home directory exists
