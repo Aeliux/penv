@@ -10,7 +10,8 @@
           "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz",
           "sha256": "6bc2cde3930ad088b3bb46fa45279e96d25bc3810f209850ecbe4722711874f9"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-24-vanilla": {
       "id": "ubuntu-24.04-vanilla",
@@ -22,7 +23,8 @@
           "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz",
           "sha256": "6bc2cde3930ad088b3bb46fa45279e96d25bc3810f209850ecbe4722711874f9"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-vanilla": {
       "id": "ubuntu-24.04-vanilla",
@@ -34,7 +36,8 @@
           "url": "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.3-base-amd64.tar.gz",
           "sha256": "6bc2cde3930ad088b3bb46fa45279e96d25bc3810f209850ecbe4722711874f9"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "alpine-3.22-vanilla": {
       "id": "alpine-3.22-vanilla",
@@ -46,7 +49,8 @@
           "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz",
           "sha256": "412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be"
         }
-      ]
+      ],
+      "family": "alpine"
     },
     "alpine-3-vanilla": {
       "id": "alpine-3.22-vanilla",
@@ -58,7 +62,8 @@
           "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz",
           "sha256": "412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be"
         }
-      ]
+      ],
+      "family": "alpine"
     },
     "alpine-vanilla": {
       "id": "alpine-3.22-vanilla",
@@ -70,7 +75,8 @@
           "url": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/x86_64/alpine-minirootfs-3.22.2-x86_64.tar.gz",
           "sha256": "412454ed98025ad9cd910d13f3d448b184e81502baa83180e89f98d0f13674be"
         }
-      ]
+      ],
+      "family": "alpine"
     },
     "debian-11-1.1": {
       "id": "debian-11-1.1",
@@ -97,7 +103,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-armhf-rootfs.tar.gz",
           "sha256": "1a42e66ba8599e9492f5813c608d2b9337ef57865b19d9b85c0c5da6a4573598"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "debian-11": {
       "id": "debian-11-1.1",
@@ -124,7 +131,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bullseye-armhf-rootfs.tar.gz",
           "sha256": "1a42e66ba8599e9492f5813c608d2b9337ef57865b19d9b85c0c5da6a4573598"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "debian-12-1.1": {
       "id": "debian-12-1.1",
@@ -151,7 +159,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-armhf-rootfs.tar.gz",
           "sha256": "595ccd01762bcb7db35fde70b2b01a247d13251a00edc8cacf41f141aaf07c46"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "debian-12": {
       "id": "debian-12-1.1",
@@ -178,7 +187,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-bookworm-armhf-rootfs.tar.gz",
           "sha256": "595ccd01762bcb7db35fde70b2b01a247d13251a00edc8cacf41f141aaf07c46"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "debian-13-1.1": {
       "id": "debian-13-1.1",
@@ -205,7 +215,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-armhf-rootfs.tar.gz",
           "sha256": "69dfca75f50e598cc7755fccc1434eafed2a8d3deba8b83dca33cbb207b58974"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "debian-13": {
       "id": "debian-13-1.1",
@@ -232,7 +243,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-armhf-rootfs.tar.gz",
           "sha256": "69dfca75f50e598cc7755fccc1434eafed2a8d3deba8b83dca33cbb207b58974"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "debian": {
       "id": "debian-13-1.1",
@@ -259,7 +271,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/debian-trixie-armhf-rootfs.tar.gz",
           "sha256": "69dfca75f50e598cc7755fccc1434eafed2a8d3deba8b83dca33cbb207b58974"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-20.04-1.1": {
       "id": "ubuntu-20.04-1.1",
@@ -276,7 +289,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-i386-rootfs.tar.gz",
           "sha256": "71f7754a67ee6f9eab7d7144567fa4b282613adc3c96cdcf6fb1917c8a93ce53"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-20.04": {
       "id": "ubuntu-20.04-1.1",
@@ -293,7 +307,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-i386-rootfs.tar.gz",
           "sha256": "71f7754a67ee6f9eab7d7144567fa4b282613adc3c96cdcf6fb1917c8a93ce53"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-20": {
       "id": "ubuntu-20.04-1.1",
@@ -310,7 +325,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-focal-i386-rootfs.tar.gz",
           "sha256": "71f7754a67ee6f9eab7d7144567fa4b282613adc3c96cdcf6fb1917c8a93ce53"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-22.04-1.1": {
       "id": "ubuntu-22.04-1.1",
@@ -327,7 +343,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-i386-rootfs.tar.gz",
           "sha256": "7296612d8f1a18776df2b1f54002240bb55bc70dabab66d04419a741f7b241e4"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-22.04": {
       "id": "ubuntu-22.04-1.1",
@@ -344,7 +361,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-i386-rootfs.tar.gz",
           "sha256": "7296612d8f1a18776df2b1f54002240bb55bc70dabab66d04419a741f7b241e4"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-22": {
       "id": "ubuntu-22.04-1.1",
@@ -361,7 +379,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-jammy-i386-rootfs.tar.gz",
           "sha256": "7296612d8f1a18776df2b1f54002240bb55bc70dabab66d04419a741f7b241e4"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-24.04-1.1": {
       "id": "ubuntu-24.04-1.1",
@@ -378,7 +397,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
           "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-24.04": {
       "id": "ubuntu-24.04-1.1",
@@ -395,7 +415,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
           "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu-24": {
       "id": "ubuntu-24.04-1.1",
@@ -412,7 +433,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
           "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
-      ]
+      ],
+      "family": "debian"
     },
     "ubuntu": {
       "id": "ubuntu-24.04-1.1",
@@ -429,7 +451,8 @@
           "url": "https://github.com/Aeliux/penv/releases/download/debian-1.1/ubuntu-noble-i386-rootfs.tar.gz",
           "sha256": "f865a8f2f971725b652fc0d4ede64139cdd4ca42cc157df9b85b4110142ddfa5"
         }
-      ]
+      ],
+      "family": "debian"
     }
   },
   "addons": {}
