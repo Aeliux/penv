@@ -130,6 +130,9 @@ env::shell(){
     err "No suitable shell or startup script found in environment"
     return 1
   fi
+
+  export PENV_ENV_MODE="environment"
+  export PENV_ENV_NAME="$env_name"
   
   # Build final command
   local -a cmd

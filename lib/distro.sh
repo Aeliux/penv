@@ -166,6 +166,8 @@ distro::apply_addons(){
     return 1
   }
   
+  export PENV_ENV_MODE="addon"
+
   # Setup proot environment
   setup_proot_env "$temp_root"
   
