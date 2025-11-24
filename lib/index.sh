@@ -125,22 +125,33 @@ index::get_addon(){
 index::addon_compatible(){
   local addon_data="$1"
   local distro_id="$2"
+  local distro_family="${3:-}"
   
-  # Get distroIds array from addon
-  local distro_ids
+  # Get distroIds and distroFamilies arrays from addon
+  local distro_ids distro_families
   distro_ids=$(echo "$addon_data" | jq -r '.distroIds[]' 2>/dev/null)
+  distro_families=$(echo "$addon_data" | jq -r '.distroFamilies[]' 2>/dev/null)
   
-  # Empty array means compatible with all
-  if [[ -z "$distro_ids" ]]; then
+  # If both arrays are empty, compatible with all
+  if [[ -z "$distro_ids" ]] && [[ -z "$distro_families" ]]; then
     return 0
   fi
   
-  # Check if distro_id is in the list
+  # Check if distro_id is in the distroIds list
   while IFS= read -r id; do
     if [[ "$id" == "$distro_id" ]]; then
       return 0
     fi
   done <<< "$distro_ids"
+  
+  # Check if distro family is in the distroFamilies list
+  if [[ -n "$distro_families" ]] && [[ -n "$distro_family" ]]; then
+    while IFS= read -r family; do
+      if [[ "$family" == "$distro_family" ]]; then
+        return 0
+      fi
+    done <<< "$distro_families"
+  fi
   
   return 1
 }
@@ -183,11 +194,28 @@ index::list_addons(){
     return
   fi
   
-  jq -r '.addons | to_entries[] | "\(.key)|\(.value.name)|\(.value.description)|\(.value.distroIds | length)"' "$remote_index" 2>/dev/null | sort | while IFS='|' read -r id name desc distro_count; do
-    if [[ "$distro_count" -eq 0 ]]; then
+  jq -r '.addons | to_entries[] | "\(.key)|\(.value.name)|\(.value.description)|\(.value.distroIds // [])|\(.value.distroFamilies // [])"' "$remote_index" 2>/dev/null | sort | while IFS='|' read -r id name desc distro_ids_json distro_families_json; do
+    local distro_ids_count distro_families_count
+    distro_ids_count=$(echo "$distro_ids_json" | jq 'length' 2>/dev/null)
+    distro_families_count=$(echo "$distro_families_json" | jq 'length' 2>/dev/null)
+    
+    # Determine compatibility display
+    if [[ "$distro_ids_count" -eq 0 ]] && [[ "$distro_families_count" -eq 0 ]]; then
+      # Universal addon
       printf "  ${C_MAGENTA}%-30s${C_RESET} ${C_DIM}%s (universal)${C_RESET}\n" "$id" "$desc"
+    elif [[ "$distro_families_count" -gt 0 ]] && [[ "$distro_ids_count" -eq 0 ]]; then
+      # Family-based compatibility
+      local families_list
+      families_list=$(echo "$distro_families_json" | jq -r 'join(", ")' 2>/dev/null)
+      printf "  ${C_MAGENTA}%-30s${C_RESET} ${C_DIM}%s (families: %s)${C_RESET}\n" "$id" "$desc" "$families_list"
+    elif [[ "$distro_families_count" -gt 0 ]]; then
+      # Both distro IDs and families
+      local families_list
+      families_list=$(echo "$distro_families_json" | jq -r 'join(", ")' 2>/dev/null)
+      printf "  ${C_MAGENTA}%-30s${C_RESET} ${C_DIM}%s (distros: %s + families: %s)${C_RESET}\n" "$id" "$desc" "$distro_ids_count" "$families_list"
     else
-      printf "  ${C_MAGENTA}%-30s${C_RESET} ${C_DIM}%s${C_RESET}\n" "$id" "$desc"
+      # Only distro IDs
+      printf "  ${C_MAGENTA}%-30s${C_RESET} ${C_DIM}%s (distros: %s)${C_RESET}\n" "$id" "$desc" "$distro_ids_count"
     fi
   done
   
@@ -237,13 +265,14 @@ index::get_url_for_arch(){
 }
 
 # Store distro metadata in local index
-# Args: distro_id, file_path, [base_distro], [addons_json_array], [type]
+# Args: distro_id, file_path, [base_distro], [addons_json_array], [type], [family]
 index::store_downloaded(){
   local distro_id="$1" 
   local file_path="$2"
   local base_distro="${3:-}"
   local addons_json="${4:-[]}"
   local distro_type="${5:-base}"
+  local distro_family="${6:-}"
   
   require_jq
   index::init_local
@@ -264,24 +293,26 @@ index::store_downloaded(){
   
   local jq_success=false
   if [[ -n "$base_distro" ]]; then
-    # Store custom distro with base_distro and addons
+    # Store custom distro with base_distro, addons, and family
     if jq --arg id "$distro_id" \
        --arg path "$file_path" \
        --arg date "$(date -Iseconds)" \
        --arg base "$base_distro" \
        --argjson addons "$addons_json" \
        --arg type "$distro_type" \
-       '.distros[$id] = {file: $path, downloaded: $date, base_distro: $base, addons: $addons, type: $type}' \
+       --arg family "$distro_family" \
+       '.distros[$id] = {file: $path, downloaded: $date, base_distro: $base, addons: $addons, type: $type, family: $family}' \
        "$LOCAL_INDEX" > "$tmp_file"; then
       jq_success=true
     fi
   else
-    # Store base distro
+    # Store base distro with family
     if jq --arg id "$distro_id" \
        --arg path "$file_path" \
        --arg date "$(date -Iseconds)" \
        --arg type "$distro_type" \
-       '.distros[$id] = {file: $path, downloaded: $date, type: $type}' \
+       --arg family "$distro_family" \
+       '.distros[$id] = {file: $path, downloaded: $date, type: $type, family: $family}' \
        "$LOCAL_INDEX" > "$tmp_file"; then
       jq_success=true
     fi

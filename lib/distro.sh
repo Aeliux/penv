@@ -23,9 +23,10 @@ distro::download(){
     return 1
   fi
   
-  # Get the actual distro ID (in case user provided an alias)
-  local actual_distro_id
+  # Get the actual distro ID and family (in case user provided an alias)
+  local actual_distro_id distro_family
   actual_distro_id=$(echo "$distro_data" | jq -r '.id')
+  distro_family=$(echo "$distro_data" | jq -r '.family // "unknown"')
   
   # Determine if this is a custom name or alias
   local is_custom=false
@@ -87,8 +88,8 @@ distro::download(){
       return 1
     fi
     
-    # Store base distro in index
-    index::store_downloaded "$actual_distro_id" "$base_cache_file"
+    # Store base distro in index with family
+    index::store_downloaded "$actual_distro_id" "$base_cache_file" "" "[]" "base" "$distro_family"
     base_distro_file="$base_cache_file"
     
     msg "Base distro downloaded: $actual_distro_id"
@@ -109,12 +110,12 @@ distro::download(){
     local custom_cache_file="$CACHE_DIR/${final_id}.tar.gz"
     
     # Apply addons to base distro
-    if ! distro::apply_addons "$base_distro_file" "$custom_cache_file" "$actual_distro_id" "${addons[@]}"; then
+    if ! distro::apply_addons "$base_distro_file" "$custom_cache_file" "$actual_distro_id" "$distro_family" "${addons[@]}"; then
       return 1
     fi
     
-    # Store custom distro with metadata
-    index::store_downloaded "$final_id" "$custom_cache_file" "$actual_distro_id" "$addons_json" "custom"
+    # Store custom distro with metadata including family
+    index::store_downloaded "$final_id" "$custom_cache_file" "$actual_distro_id" "$addons_json" "custom" "$distro_family"
     
     msg "Custom distro created: ${C_BOLD}$final_id${C_RESET}"
     info "Base: $actual_distro_id + addons: ${addons[*]}"
@@ -122,7 +123,7 @@ distro::download(){
     
   elif [[ "$is_custom" == "true" ]]; then
     # Alias: just store reference to base distro, no file duplication
-    index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias"
+    index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias" "$distro_family"
     
     msg "Alias created: ${C_BOLD}$final_id${C_RESET} → $actual_distro_id"
     info "File: $base_distro_file (shared with base)"
@@ -133,7 +134,7 @@ distro::download(){
     if [[ "$final_id" != "$actual_distro_id" ]]; then
       # User downloaded using an alias (e.g., ubuntu-vanilla)
       # Store the alias so they can use that name later
-      index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias"
+      index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias" "$distro_family"
       msg "Distro available: ${C_BOLD}$final_id${C_RESET} (alias of $actual_distro_id)"
     fi
     info "File: $base_distro_file"
@@ -147,7 +148,8 @@ distro::apply_addons(){
   local source_tarball="$1"
   local output_file="$2"
   local distro_id="$3"
-  shift 3
+  local distro_family="$4"
+  shift 4
   local addons=("$@")
   
   require_proot
@@ -181,7 +183,7 @@ distro::apply_addons(){
     fi
     
     # Check distro compatibility
-    if ! index::addon_compatible "$addon_data" "$distro_id"; then
+    if ! index::addon_compatible "$addon_data" "$distro_id" "$distro_family"; then
       local addon_name
       addon_name=$(echo "$addon_data" | jq -r '.name')
       warn "Addon '$addon_name' is not compatible with distro '$distro_id' (skipping)"
