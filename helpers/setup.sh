@@ -37,6 +37,14 @@ cat > "$ROOTFS_DIR"/penv/metadata.json <<EOF
 }
 EOF
 
+# Apply overrides to rootfs recursively
+echo "Applying overrides..."
+cp -a overrides/. "$ROOTFS_DIR"/
+
+# Set up root user
+echo "Setting up root user..."
+cp -a overrides/etc/skel/. "$ROOTFS_DIR"/root/
+
 # Copy startup script
 cp helpers/startup.sh "$ROOTFS_DIR"/penv/startup.sh
 chmod +x "$ROOTFS_DIR"/penv/startup.sh
