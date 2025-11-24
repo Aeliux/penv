@@ -11,6 +11,13 @@ cleanup() {
     rm -rf /var/run/*.pid 2>/dev/null || true
     rm -rf /run/*.pid 2>/dev/null || true
 
+    # Delete temp files generated during runtime
+    if [ "$PENV_ENV_MODE" = "mod" ]; then
+        rm -f "$HOME"/.bash_history 2>/dev/null || true
+        rm -f "$HOME"/.zsh_history 2>/dev/null || true
+        rm -f "$HOME"/.sudo_as_admin_successful 2>/dev/null || true
+    fi
+
     # Run any additional cleanup scripts in /penv/cleanup.d
     if [ -d /penv/cleanup.d ]; then
         for script in /penv/cleanup.d/*; do
@@ -75,7 +82,8 @@ fi
 # Launch shell
 for shell in /bin/bash /usr/bin/bash /bin/sh /usr/bin/sh; do
     if [ -x "$shell" ]; then
-        exec "$shell" --login
+        "$shell" --login
+        exit $?
     fi
 done
 
