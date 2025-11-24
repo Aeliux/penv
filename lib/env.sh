@@ -194,3 +194,32 @@ env::delete(){
       ;;
   esac
 }
+
+# Delete all environments
+env::delete_all(){
+  ensure_dirs
+  
+  if [[ ! -d "$ENVS_DIR" ]] || [[ ! "$(ls -A "$ENVS_DIR" 2>/dev/null)" ]]; then
+    info "No environments to delete"
+    return 0
+  fi
+  
+  local count
+  count=$(find "$ENVS_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
+  local total_size
+  total_size=$(du -sh "$ENVS_DIR" 2>/dev/null | cut -f1)
+  
+  warn "About to delete all $count environment(s) (${total_size})"
+  echo -e "  ${C_DIM}Location: $ENVS_DIR${C_RESET}"
+  read -p "$(echo -e "${C_YELLOW}Are you sure? (y/N):${C_RESET} ")" yn
+  
+  case "$yn" in
+    [Yy])
+      rm -rf "${ENVS_DIR:?}/"*
+      msg "Deleted all environments"
+      ;;
+    *)
+      info "Aborted"
+      ;;
+  esac
+}

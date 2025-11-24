@@ -147,8 +147,6 @@ distro::import(){
 distro::download(){
   local distro_id="$1"
   local custom_name="$2"
-  shift 2
-  local addons=("$@")
   
   ensure_dirs
   require_jq
@@ -187,16 +185,9 @@ distro::download(){
     exists=$(jq -r ".distros[\"$final_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
     if [[ -n "$exists" ]]; then
       err "Name already exists: $final_id"
-      info "Use a different name or clean existing: ${C_BOLD}penv clean $final_id${C_RESET}"
+      info "Use a different name or remove existing: ${C_BOLD}penv rm -d $final_id${C_RESET}"
       return 1
     fi
-  fi
-  
-  # If addons requested, custom name is required
-  if [[ ${#addons[@]} -gt 0 ]] && [[ "$is_custom" == "false" ]]; then
-    err "Custom name (-n) is required when using addons"
-    info "Usage: penv download $distro_id -n <custom-name> -a <addon>"
-    return 1
   fi
   
   # Check if base distro exists, download if not
@@ -205,7 +196,7 @@ distro::download(){
   
   if [[ -z "$base_distro_file" ]] || [[ ! -f "$base_distro_file" ]]; then
     # Base distro doesn't exist, download it
-    info "Downloading base distro: $actual_distro_id"
+    header "Downloading distro: $actual_distro_id"
     
     # Get URL and checksum for current architecture
     local url checksum
@@ -232,42 +223,20 @@ distro::download(){
     index::store_downloaded "$actual_distro_id" "$base_cache_file" "" "[]" "base" "$distro_family"
     base_distro_file="$base_cache_file"
     
-    msg "Base distro downloaded: $actual_distro_id"
+    echo
+    msg "Distro downloaded: ${C_BOLD}$actual_distro_id${C_RESET}"
+    info "File: $base_distro_file"
   else
-    if [[ "$is_custom" == "true" ]] || [[ ${#addons[@]} -gt 0 ]]; then
-      msg "Using existing base distro: $actual_distro_id"
-    fi
+    msg "Distro already cached: $actual_distro_id"
   fi
   
-  # Handle different scenarios
-  if [[ ${#addons[@]} -gt 0 ]]; then
-    # Custom distro with addons: apply addons and save with custom name
-    info "Creating custom distro with ${#addons[@]} addon(s)..."
-    
-    local addons_json
-    addons_json=$(printf '%s\n' "${addons[@]}" | jq -R . | jq -s .)
-    
-    local custom_cache_file="$CACHE_DIR/${final_id}.tar.gz"
-    
-    # Apply addons to base distro
-    if ! distro::apply_addons "$base_distro_file" "$custom_cache_file" "$actual_distro_id" "$distro_family" "${addons[@]}"; then
-      return 1
-    fi
-    
-    # Store custom distro with metadata including family
-    index::store_downloaded "$final_id" "$custom_cache_file" "$actual_distro_id" "$addons_json" "custom" "$distro_family"
-    
-    msg "Custom distro created: ${C_BOLD}$final_id${C_RESET}"
-    info "Base: $actual_distro_id + addons: ${addons[*]}"
-    info "File: $custom_cache_file"
-    
-  elif [[ "$is_custom" == "true" ]]; then
+  # Handle alias creation
+  if [[ "$is_custom" == "true" ]]; then
     # Alias: just store reference to base distro, no file duplication
     index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias" "$distro_family"
     
     msg "Alias created: ${C_BOLD}$final_id${C_RESET} → $actual_distro_id"
     info "File: $base_distro_file (shared with base)"
-    
   else
     # Simple base distro download (already done above if needed)
     # If user used an alias name to download, store that alias too
@@ -277,8 +246,81 @@ distro::download(){
       index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias" "$distro_family"
       msg "Distro available: ${C_BOLD}$final_id${C_RESET} (alias of $actual_distro_id)"
     fi
-    info "File: $base_distro_file"
   fi
+  
+  echo
+  return 0
+}
+
+# Modify a distro with addons (works on local distros)
+distro::modify(){
+  local distro_id="$1"
+  local new_id="$2"
+  shift 2
+  local addons=("$@")
+  
+  ensure_dirs
+  require_jq
+  
+  # Validate new distro ID
+  if ! index::validate_name "$new_id"; then
+    return 1
+  fi
+  
+  # Check if new ID already exists
+  index::init_local
+  local exists
+  exists=$(jq -r ".distros[\"$new_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
+  if [[ -n "$exists" ]]; then
+    err "Distro ID already exists: $new_id"
+    info "Use a different ID or remove existing: ${C_BOLD}penv rm -d $new_id${C_RESET}"
+    return 1
+  fi
+  
+  # Get source distro from local index
+  local source_file source_family source_type
+  source_file=$(index::get_local_path "$distro_id" || true)
+  
+  if [[ -z "$source_file" ]] || [[ ! -f "$source_file" ]]; then
+    err "Source distro not found in local cache: $distro_id"
+    info "Use ${C_BOLD}penv list -d${C_RESET} to see downloaded distros"
+    return 1
+  fi
+  
+  # Get family and type from local index
+  local distro_entry
+  distro_entry=$(jq -r ".distros[\"$distro_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
+  source_family=$(echo "$distro_entry" | jq -r '.family // "unknown"')
+  source_type=$(echo "$distro_entry" | jq -r '.type // "base"')
+  
+  header "Modifying distro: $distro_id"
+  info "Source: $distro_id ($source_type)"
+  info "Target: $new_id"
+  info "Addons: ${addons[*]}"
+  if [[ -n "$source_family" && "$source_family" != "unknown" ]]; then
+    info "Family: $source_family"
+  fi
+  echo
+  
+  local addons_json
+  addons_json=$(printf '%s\n' "${addons[@]}" | jq -R . | jq -s .)
+  
+  local output_file="$CACHE_DIR/${new_id}.tar.gz"
+  
+  # Apply addons to source distro
+  if ! distro::apply_addons "$source_file" "$output_file" "$distro_id" "$source_family" "${addons[@]}"; then
+    return 1
+  fi
+  
+  # Store modified distro with metadata
+  index::store_downloaded "$new_id" "$output_file" "$distro_id" "$addons_json" "custom" "$source_family"
+  
+  echo
+  msg "Modified distro created: ${C_BOLD}$new_id${C_RESET}"
+  info "Base: $distro_id + addons: ${addons[*]}"
+  info "File: $output_file"
+  info "Create environment: ${C_BOLD}penv new <name> $new_id${C_RESET}"
+  echo
   
   return 0
 }

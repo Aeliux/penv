@@ -29,13 +29,17 @@ case "$command" in
   init)
     cmd::init
     ;;
-  # Download distro
-  download|dl)
-    cmd::download "$@"
+  # Get/download distro
+  get|download|dl)
+    cmd::get "$@"
     ;;
   # Import rootfs tarball
   import)
     cmd::import "$@"
+    ;;
+  # Modify distro with addons
+  mod|modify)
+    cmd::mod "$@"
     ;;
   # Create environment
   create|new)
@@ -45,21 +49,13 @@ case "$command" in
   shell|enter|sh)
     cmd::shell "$@"
     ;;
-  # Delete environment
+  # Delete/remove
   delete|remove|rm)
-    cmd::delete "$@"
+    cmd::rm "$@"
     ;;
   # List resources
   list|ls)
     cmd::list "$@"
-    ;;
-  # Show cached downloads
-  cache)
-    cmd::cache
-    ;;
-  # Clean cached downloads
-  clean)
-    cmd::clean "$@"
     ;;
   # Help
   help|--help|-h)

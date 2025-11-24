@@ -71,25 +71,20 @@ cmd::import(){
   distro::import "$distro_id" "$tarball_path" "$family"
 }
 
-cmd::download(){
-  local list_mode=false
-  local custom_name=""
+cmd::mod(){
   local distro_id=""
+  local new_name=""
   local addons=()
   
   # Parse arguments
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -l|--list)
-        list_mode=true
-        shift
-        ;;
       -n|--name)
         if [[ -z "$2" ]]; then
           err "Option -n requires a value"
           return 2
         fi
-        custom_name="$2"
+        new_name="$2"
         shift 2
         ;;
       -a|--addon)
@@ -116,22 +111,78 @@ cmd::download(){
     esac
   done
   
+  if [[ -z "$distro_id" ]]; then
+    err "Usage: penv mod <distro-id> -a <addon> ... -n <new-id>"
+    info "Modify a distro (local or downloaded) by applying addons"
+    echo -e "  ${C_DIM}<distro-id>${C_RESET}  Base distro ID from local cache"
+    echo -e "  ${C_DIM}-a <addon>${C_RESET}   Addon ID (can use multiple times)"
+    echo -e "  ${C_DIM}-n <new-id>${C_RESET}  New distro ID for modified version ${C_DIM}(required)${C_RESET}"
+    return 2
+  fi
+  
+  if [[ ${#addons[@]} -eq 0 ]]; then
+    err "At least one addon is required"
+    info "Usage: penv mod $distro_id -a <addon> -n <new-id>"
+    return 2
+  fi
+  
+  if [[ -z "$new_name" ]]; then
+    err "New distro ID is required (-n option)"
+    info "Usage: penv mod $distro_id -a ${addons[0]} -n <new-id>"
+    return 2
+  fi
+  
+  distro::modify "$distro_id" "$new_name" "${addons[@]}"
+}
+
+cmd::get(){
+  local list_mode=false
+  local custom_name=""
+  local distro_id=""
+  
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -l|--list)
+        list_mode=true
+        shift
+        ;;
+      -n|--name)
+        if [[ -z "$2" ]]; then
+          err "Option -n requires a value"
+          return 2
+        fi
+        custom_name="$2"
+        shift 2
+        ;;
+      -*)
+        err "Unknown option: $1"
+        return 2
+        ;;
+      *)
+        if [[ -z "$distro_id" ]]; then
+          distro_id="$1"
+        else
+          err "Unexpected argument: $1"
+          return 2
+        fi
+        shift
+        ;;
+    esac
+  done
+  
   if $list_mode; then
     index::list_distros
     return 0
   fi
   
   if [[ -z "$distro_id" ]]; then
-    err "Usage: penv download <distro-id> [-n <custom-name>] [-a <addon>]..."
-    echo -e "       penv download -l  ${C_DIM}(list available distros)${C_RESET}"
+    err "Usage: penv get <distro-id> [-n <custom-name>]"
+    echo -e "       penv get -l  ${C_DIM}(list available distros)${C_RESET}"
     return 2
   fi
   
-  if [[ ${#addons[@]} -gt 0 ]]; then
-    distro::download "$distro_id" "$custom_name" "${addons[@]}"
-  else
-    distro::download "$distro_id" "$custom_name"
-  fi
+  distro::download "$distro_id" "$custom_name"
 }
 
 cmd::create(){
@@ -153,8 +204,66 @@ cmd::shell(){
   env::shell "$@"
 }
 
-cmd::delete(){
-  env::delete "$@"
+cmd::rm(){
+  local remove_distros=false
+  local remove_all=false
+  local targets=()
+  
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -d|--distro)
+        remove_distros=true
+        shift
+        ;;
+      -a|--all)
+        remove_all=true
+        shift
+        ;;
+      -*)
+        err "Unknown option: $1"
+        info "Usage: penv rm <name>          Remove environment"
+        info "       penv rm -d <id>        Remove distro"
+        info "       penv rm -a             Remove all environments"
+        info "       penv rm -d -a          Remove all distros"
+        return 2
+        ;;
+      *)
+        targets+=("$1")
+        shift
+        ;;
+    esac
+  done
+  
+  if $remove_distros; then
+    # Remove distros
+    if $remove_all; then
+      distro::clean_all
+    else
+      if [[ ${#targets[@]} -eq 0 ]]; then
+        err "Usage: penv rm -d <distro-id>"
+        info "       penv rm -d -a  ${C_DIM}(remove all distros)${C_RESET}"
+        return 2
+      fi
+      for target in "${targets[@]}"; do
+        distro::clean "$target"
+      done
+    fi
+  else
+    # Remove environments
+    if $remove_all; then
+      env::delete_all
+    else
+      if [[ ${#targets[@]} -eq 0 ]]; then
+        err "Usage: penv rm <name>"
+        info "       penv rm -a  ${C_DIM}(remove all environments)${C_RESET}"
+        return 2
+      fi
+      for target in "${targets[@]}"; do
+        env::delete "$target"
+      done
+    fi
+  fi
 }
 
 cmd::list(){
@@ -212,83 +321,77 @@ cmd::list(){
   fi
 }
 
-cmd::cache(){
-  distro::list_downloaded
-}
 
-cmd::clean(){
-  if [[ $# -lt 1 ]]; then
-    err "Usage: penv clean <distro-id>"
-    echo -e "       penv clean --all  ${C_DIM}(remove all cached downloads)${C_RESET}"
-    return 2
-  fi
-  
-  if [[ "$1" == "--all" ]]; then
-    distro::clean_all
-  else
-    distro::clean "$1"
-  fi
-}
 
 cmd::usage(){
   echo -e "${C_BOLD}${C_MAGENTA}penv${C_RESET} - proot environment manager"
   echo
   echo -e "${C_BOLD}USAGE:${C_RESET}"
   echo -e "  ${C_GREEN}penv init${C_RESET}                           Initialize penv"
-  echo -e "  ${C_GREEN}penv download${C_RESET} ${C_YELLOW}<id>${C_RESET}                   Download a distro"
+  echo -e "  ${C_GREEN}penv get${C_RESET} ${C_YELLOW}<id>${C_RESET}                      Download a distro"
   echo -e "    ${C_DIM}Options:${C_RESET}"
   echo -e "      ${C_DIM}-l, --list${C_RESET}                  List available distros"
-  echo -e "      ${C_DIM}-n, --name <name>${C_RESET}           Save with custom name ${C_DIM}(required with -a)${C_RESET}"
-  echo -e "      ${C_DIM}-a, --addon <id>${C_RESET}            Apply addon (can use multiple times)"
+  echo -e "      ${C_DIM}-n, --name <name>${C_RESET}           Save with custom name"
   echo -e "  ${C_GREEN}penv import${C_RESET} ${C_YELLOW}<id>${C_RESET} ${C_YELLOW}<tarball>${C_RESET}        Import custom rootfs tarball"
   echo -e "    ${C_DIM}Options:${C_RESET}"
   echo -e "      ${C_DIM}-f, --family <name>${C_RESET}         Set distro family (debian, alpine, etc.)"
-  echo -e "  ${C_GREEN}penv create${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}     Create new environment"
+  echo -e "  ${C_GREEN}penv mod${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}              Modify distro with addons"
+  echo -e "    ${C_DIM}Options:${C_RESET}"
+  echo -e "      ${C_DIM}-a, --addon <id>${C_RESET}            Apply addon (can use multiple times)"
+  echo -e "      ${C_DIM}-n, --name <name>${C_RESET}           Save as new distro ID ${C_DIM}(required)${C_RESET}"
+  echo -e "  ${C_GREEN}penv new${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}      Create new environment"
   echo -e "    ${C_DIM}Options:${C_RESET}"
   echo -e "      ${C_DIM}-l, --list${C_RESET}                  List downloaded distros"
   echo -e "  ${C_GREEN}penv shell${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}[cmd]${C_RESET}           Enter environment shell or run command"
+  echo -e "  ${C_GREEN}penv rm${C_RESET} ${C_YELLOW}<name>${C_RESET}                     Remove environment"
+  echo -e "  ${C_GREEN}penv rm -d${C_RESET} ${C_YELLOW}<id>${C_RESET}                   Remove distro"
+  echo -e "  ${C_GREEN}penv rm -a${C_RESET}                        Remove all environments"
+  echo -e "  ${C_GREEN}penv rm -d -a${C_RESET}                     Remove all distros"
   echo -e "  ${C_GREEN}penv list${C_RESET}                           List resources"
   echo -e "    ${C_DIM}Options (combine multiple):${C_RESET}"
   echo -e "      ${C_DIM}-o, --online${C_RESET}                List online distros"
   echo -e "      ${C_DIM}-e, --envs${C_RESET}                  List environments ${C_DIM}(default)${C_RESET}"
   echo -e "      ${C_DIM}-d, --downloaded${C_RESET}            List downloaded distros"
   echo -e "      ${C_DIM}-a, --addons${C_RESET}                List available addons ${C_DIM}(with -o)${C_RESET}"
-  echo -e "  ${C_GREEN}penv delete${C_RESET} ${C_YELLOW}<name>${C_RESET}                 Delete an environment"
-  echo -e "  ${C_GREEN}penv cache${C_RESET}                          Show downloaded distros (alias for list -d)"
-  echo -e "  ${C_GREEN}penv clean${C_RESET} ${C_YELLOW}<id>${C_RESET}                    Remove cached distro"
-  echo -e "  ${C_GREEN}penv clean --all${C_RESET}                   Remove all cached downloads"
   echo
   echo -e "${C_BOLD}EXAMPLES:${C_RESET}"
-  echo "  # Download a vanilla distro"
-  echo "  penv download ubuntu-24.04-vanilla"
+  echo "  # Get a distro"
+  echo "  penv get ubuntu-24.04-vanilla"
+  echo "  penv get ubuntu-24.04-vanilla -n ubuntu"
   echo
   echo "  # Import a custom rootfs"
-  echo "  penv import my-custom-distro /path/to/rootfs.tar.gz"
-  echo "  penv import my-alpine alpine-rootfs.tar.gz -f alpine"
+  echo "  penv import my-custom /path/to/rootfs.tar.gz"
+  echo "  penv import my-alpine rootfs.tar.gz -f alpine"
   echo
-  echo "  # Download with custom name (required for addons)"
-  echo "  penv download ubuntu-24.04-vanilla -n my-dev-env"
+  echo "  # Modify distro with addons"
+  echo "  penv mod ubuntu-24.04-vanilla -a nodejs -a python -n ubuntu-dev"
+  echo "  penv mod my-custom -a build-tools -n my-custom-dev"
   echo
-  echo "  # Download with addons (custom name required)"
-  echo "  penv download ubuntu-24.04-vanilla -n ubuntu-dev -a nodejs -a python"
+  echo "  # Create and use environment"
+  echo "  penv new myenv ubuntu-24.04-vanilla"
+  echo "  penv shell myenv"
+  echo "  penv shell myenv python3 --version"
+  echo
+  echo "  # Remove resources"
+  echo "  penv rm myenv            # remove environment"
+  echo "  penv rm -d ubuntu-dev    # remove distro"
+  echo "  penv rm -a               # remove all environments"
+  echo "  penv rm -d -a            # remove all distros"
   echo
   echo "  # List everything"
   echo "  penv list -o -e -d       # online, envs, and downloaded"
   echo "  penv list -o -a          # online distros and addons"
   echo
-  echo "  # Create and use environment"
-  echo "  penv create myenv ubuntu-24.04-vanilla"
-  echo "  penv shell myenv"
-  echo "  penv shell myenv python3 --version  # run command"
-  echo
   echo -e "${C_BOLD}ENVIRONMENT:${C_RESET}"
   echo -e "  ${C_DIM}PENV_INDEX_URL${C_RESET}  Custom index URL (default: GitHub)"
   echo
   echo -e "${C_BOLD}NOTES:${C_RESET}"
-  echo -e "  ${C_DIM}• Custom name (-n) is required when using addons (-a)${C_RESET}"
+  echo -e "  ${C_DIM}• Use 'mod' to apply addons to any distro (downloaded or imported)${C_RESET}"
   echo -e "  ${C_DIM}• Addons are distro-specific or universal${C_RESET}"
   echo -e "  ${C_DIM}• Addons are architecture-aware${C_RESET}"
   echo
   echo -e "${C_BOLD}ALIASES:${C_RESET}"
-  echo -e "  ${C_DIM}enter -> shell, dl -> download, ls -> list, rm -> delete${C_RESET}"
+  echo -e "  ${C_DIM}new -> create, sh -> shell, ls -> list${C_RESET}"
+  echo -e "  ${C_DIM}dl/download -> get, modify -> mod${C_RESET}"
+  echo -e "  ${C_DIM}delete/remove -> rm${C_RESET}"
 }

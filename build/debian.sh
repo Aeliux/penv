@@ -155,6 +155,7 @@ helpers/finalize.sh "$ROOTFS_DIR"
 
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
+rm -f "$OUTPUT_FILE"
 tar -czf "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
 chmod 644 "$OUTPUT_FILE"
 
