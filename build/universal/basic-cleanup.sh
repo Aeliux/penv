@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/sh
 set -e
 
-VERBOSE=0
+VERBOSE=${PENV_CONFIG_VERBOSE:-0}
 if [ "${1:-}" = "-v" ]; then VERBOSE=1; fi
 log(){ [ $VERBOSE -eq 1 ] && echo "$*"; }
 del(){ if [ $VERBOSE -eq 1 ]; then echo "[DEL] $1"; rm -rf -- "$1"; else rm -rf -- "$1" >/dev/null 2>&1; fi }

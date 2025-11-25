@@ -12,7 +12,24 @@ cat > /etc/apt/apt.conf.d/99proot <<EOF
 APT::Sandbox::User "root";
 Acquire::Retries "3";
 Acquire::http::Timeout "10";
+Dir::Cache "";
+Dir::Cache::archives "";
+Binary::apt::APT::Keep-Downloaded-Packages "false";
+APT::Keep-Downloaded-Packages "false";
 EOF
+
+# Prevent doc generation
+mkdir -p /etc/dpkg/dpkg.cfg.d
+cat > /etc/dpkg/dpkg.cfg.d/01_nodoc <<EOF
+path-exclude=/usr/share/locale/*
+path-exclude=/usr/share/man/*
+path-exclude=/usr/share/doc/*
+path-include=/usr/share/doc/*/copyright
+path-exclude=/usr/share/doc/*
+path-exclude=/usr/share/info/*
+EOF
+mkdir -p /etc/dpkg/dpkg.conf.d
+cp /etc/dpkg/dpkg.cfg.d/01_nodoc /etc/dpkg/dpkg.conf.d/01_nodoc
 
 # Disable unnecessary services
 if [ -d /etc/systemd/system ]; then

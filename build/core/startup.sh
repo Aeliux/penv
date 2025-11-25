@@ -11,6 +11,14 @@ fi
 
 # Cleanup function
 cleanup() {
+    # Source signal files
+    if [ -d "$PENV_SIGNAL" ]; then
+        for signal in "$PENV_SIGNAL"/*; do
+            [ -r "$signal" ] || continue
+            . "$signal"
+        done
+    fi
+
     # Run cleanup scripts in /penv/cleanup.d
     if [ -d /penv/cleanup.d ]; then
         for script in /penv/cleanup.d/*; do
@@ -25,6 +33,8 @@ trap cleanup EXIT INT TERM
 export PENV_ENV_NAME=${PENV_ENV_NAME:-"unknown"}
 export PENV_ENV_MODE=${PENV_ENV_MODE:-"unknown"}
 export PENV_ENV_DISTRO="unknown"
+
+export PENV_CONFIG_VERBOSE=${PENV_CONFIG_VERBOSE:-0}
 
 # Unset all host environment variables except safe ones and PENV*
 _SAFE_VARS="HOME USER SHELL TERM LANG LC_ALL LC_CTYPE PATH PWD OLDPWD SHLVL _"
@@ -97,6 +107,10 @@ fi
 if [ "$PENV_ENV_MODE" = "prepare" ]; then
     exit 0
 fi
+
+# Set up penv signals
+mkdir -p /temp/penv/signals
+export PENV_SIGNAL="/temp/penv/signals"
 
 # Launch shell
 for shell in /bin/bash /usr/bin/bash /bin/sh /usr/bin/sh; do

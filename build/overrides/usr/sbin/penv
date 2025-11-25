@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+# Penv command-line tool
+
+# import metadata
+if [ -f /penv/metadata.sh ]; then
+    . /penv/metadata.sh
+else
+    echo "Error: /penv/metadata.sh not found" >&2
+    exit 1
+fi
+
+penv::version() {
+    echo "$PENV_VERSION"
+}
+
+penv::requires_version() {
+    local required_version="$1"
+    if [ -z "$required_version" ]; then
+        echo "Error: No version specified" >&2
+        return 1
+    fi
+
+    if [ "$PENV_VERSION" = "$required_version" ]; then
+        return 0
+    else
+        # compare versions
+        local IFS=.
+        local i ver1=($PENV_VERSION) ver2=($required_version)
+        # fill empty fields in ver1 with zeros
+        for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
+            ver1[i]=0
+        done
+        for ((i=0; i<${#ver1[@]}; i++)); do
+            if [ -z "${ver2[i]}" ]; then
+                ver2[i]=0
+            fi
+            if ((10#${ver1[i]} < 10#${ver2[i]})); then
+                return 1
+            elif ((10#${ver1[i]} > 10#${ver2[i]})); then
+                return 0
+            fi
+        done
+        return 0
+    fi
+}
+
+penv::clean(){
+    # requires version 2 and PENV_SIGNAL to be set
+    if [ penv::requires_version 2 ] && [ -n "$PENV_SIGNAL" ]; then
+        local signal_file="$PENV_SIGNAL/clean_signal_$$"
+        cat > "$signal_file" << EOF
+export PENV_SIGNAL_CLEANUP=1
+export PENV_CONFIG_VERBOSE=1
+EOF
+        chmod +x "$signal_file"
+        echo "Cleanup will be performed after ending the session."
+        return 0
+    else
+        echo "Error: not supported in this environment" >&2
+        return 1
+    fi
+}
+
+# Simple argparser that maps commands to functions
+penv::main() {
+    local cmd="$1"
+    shift || true
+
+    local func="penv::${cmd//-/_}"
+    if command -v "$func" >/dev/null 2>&1; then
+        "$func" "$@"
+        return $?
+    else
+        if [ -n "$cmd" ]; then
+            echo "Error: Unknown command: $cmd" >&2
+        fi
+
+        # Iterate through all available commands
+        echo "Available commands are:"
+        local available_cmds
+        available_cmds=$(declare -F | awk '{print $3}' | grep '^penv::' | sed 's/^penv:://')
+        for acmd in $available_cmds; do
+            if [ "$acmd" = "main" ]; then
+                continue
+            fi
+            echo "  $acmd"
+        done
+
+        return 1
+    fi
+}
+
+# Execute main function with all arguments
+penv::main "$@"

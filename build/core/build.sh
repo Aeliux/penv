@@ -164,7 +164,7 @@ build::finalize() {
     fi
 
     # Ensure all executables in bin directories are executable
-    find "$ROOTFS_DIR/bin" "$ROOTFS_DIR/sbin" "$ROOTFS_DIR/usr/bin" "$ROOTFS_DIR/usr/sbin" \
+    find "$ROOTFS_DIR/bin" "$ROOTFS_DIR/sbin" "$ROOTFS_DIR/usr/bin" "$ROOTFS_DIR/usr/sbin" "$ROOTFS_DIR/usr/local/bin" "$ROOTFS_DIR/usr/local/sbin" \
         -type f -executable 2>/dev/null | while read -r file; do
         chmod 755 "$file" 2>/dev/null || true
     done
