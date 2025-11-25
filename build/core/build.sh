@@ -4,6 +4,7 @@ readonly PENV_VERSION="2"
 readonly PENV_BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 export PENV_ENV_MODE="build"
+export PENV_CONFIG_VERBOSE=1
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
@@ -80,11 +81,21 @@ build::chroot_script() {
     
     chmod +x "$ROOTFS_DIR$temp_script"
     
+    # Mount essential filesystems
+    mount --bind /dev "$ROOTFS_DIR/dev" || { echo "Error: Failed to mount /dev" >&2; rm -f "$ROOTFS_DIR$temp_script"; return 1; }
+    mount --bind /proc "$ROOTFS_DIR/proc" || { umount "$ROOTFS_DIR/dev" 2>/dev/null; rm -f "$ROOTFS_DIR$temp_script"; return 1; }
+    mount --bind /sys "$ROOTFS_DIR/sys" || { umount "$ROOTFS_DIR/proc" 2>/dev/null; umount "$ROOTFS_DIR/dev" 2>/dev/null; rm -f "$ROOTFS_DIR$temp_script"; return 1; }
+    
     # Execute in chroot and capture result explicitly
     set +e
     chroot "$ROOTFS_DIR" /bin/sh "$temp_script"
     local exit_code=$?
     set -e
+    
+    # Unmount filesystems (in reverse order)
+    umount "$ROOTFS_DIR/sys" 2>/dev/null || echo "Warning: Failed to unmount /sys" >&2
+    umount "$ROOTFS_DIR/proc" 2>/dev/null || echo "Warning: Failed to unmount /proc" >&2
+    umount "$ROOTFS_DIR/dev" 2>/dev/null || echo "Warning: Failed to unmount /dev" >&2
     
     # Clean up
     rm -f "$ROOTFS_DIR$temp_script"

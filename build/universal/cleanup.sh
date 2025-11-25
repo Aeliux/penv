@@ -6,61 +6,92 @@ if [ "$PENV_ENV_MODE" != "build" ] && [ "$PENV_ENV_MODE" != "mod" ] && [ -z "$PE
 fi
 
 VERBOSE=${PENV_CONFIG_VERBOSE:-0}
-if [ "${1:-}" = "-v" ]; then VERBOSE=1; fi
-log(){ [ $VERBOSE -eq 1 ] && echo "$*"; }
-del(){ if [ $VERBOSE -eq 1 ]; then echo "[DEL] $1"; rm -rf -- "$1"; else rm -rf -- "$1" >/dev/null 2>&1; fi }
-trunc(){ if [ -f "$1" ]; then if [ $VERBOSE -eq 1 ]; then echo "[TRUNC] $1"; : > "$1"; else : > "$1"; fi; fi }
+[ "${1:-}" = "-v" ] && VERBOSE=1
+
+# Set command flags based on verbosity
+if [ $VERBOSE -eq 1 ]; then
+    RM_FLAGS="-rfv"
+    FIND_DELETE_FLAGS="-print -delete"
+else
+    RM_FLAGS="-rf"
+    FIND_DELETE_FLAGS="-delete"
+fi
+
+# Exclude system paths from find operations
+FIND_EXCLUDES="-path /dev -prune -o -path /proc -prune -o -path /sys -prune -o -path /mnt -prune -o"
+
+if [ $VERBOSE -eq 1 ]; then
+    echo "Performing deep cleanup..."
+fi
 
 # tmp and var tmp
-del /tmp/* || true
-del /var/tmp/* || true
+rm $RM_FLAGS /tmp/* || true
+rm $RM_FLAGS /var/tmp/* || true
 
 # user caches and histories
-del /root/.cache || true
-for d in /home/*/.cache; do del "$d" || true; done
-for h in /root/.bash_history /root/.ash_history /root/.zsh_history; do trunc "$h" || true; done
-for u in /home/*; do for hh in "$u"/.*history; do trunc "$hh" || true; done; done
+rm $RM_FLAGS /root/.cache || true
+for d in /home/*/.cache; do [ -e "$d" ] && rm $RM_FLAGS "$d" || true; done
+
+# truncate history files
+for h in /root/.bash_history /root/.ash_history /root/.zsh_history; do
+    if [ -f "$h" ]; then
+        [ $VERBOSE -eq 1 ] && echo "trunc: $h"
+        : > "$h"
+    fi
+done
+for u in /home/*; do 
+    for hh in "$u"/.*history; do
+        if [ -f "$hh" ]; then
+            [ $VERBOSE -eq 1 ] && echo "trunc: $hh"
+            : > "$hh"
+        fi
+    done
+done
 
 # logs: truncate files, remove archived logs and journal
-for f in /var/log/*; do if [ -f "$f" ]; then trunc "$f"; fi; done
-del /var/log/*.gz || true
-del /var/log/*.[0-9] || true
-del /var/log/journal || true
+for f in /var/log/*; do
+    if [ -f "$f" ]; then
+        [ $VERBOSE -eq 1 ] && echo "trunc: $f"
+        : > "$f"
+    fi
+done
+rm $RM_FLAGS /var/log/*.gz || true
+rm $RM_FLAGS /var/log/*.[0-9] || true
+rm $RM_FLAGS /var/log/journal || true
 
 # runtime caches and thumbnails
-del /var/cache/fontconfig || true
-find / -type d -name "__pycache__" -prune -exec rm -rf {} \; 2>/dev/null || true
-del /root/.cache/pip || true
-del /var/cache/pip || true
-del /root/.npm || true
-del /root/.cache/yarn || true
-
+rm $RM_FLAGS /var/cache/fontconfig || true
+find / $FIND_EXCLUDES -type d -name "__pycache__" -print0 | xargs -0 rm $RM_FLAGS || true
+rm $RM_FLAGS /root/.cache/pip || true
+rm $RM_FLAGS /var/cache/pip || true
+rm $RM_FLAGS /root/.npm || true
+rm $RM_FLAGS /root/.cache/yarn || true
 # thumbnails and user UI caches
-del /root/.thumbnails || true
-for d in /home/*/.thumbnails; do del "$d" || true; done
+rm $RM_FLAGS /root/.thumbnails || true
+for d in /home/*/.thumbnails; do [ -e "$d" ] && rm $RM_FLAGS "$d" || true; done
 
 # remove snap/flatpak caches if present
-del /var/lib/snapd || true
-del /var/cache/flatpak || true
+rm $RM_FLAGS /var/lib/snapd || true
+rm $RM_FLAGS /var/cache/flatpak || true
 
 # leftover caches and temporary package data
-del /var/cache/man || true
-del /var/cache/* || true
+rm $RM_FLAGS /var/cache/man || true
+rm $RM_FLAGS /var/cache/* || true
 
 # remove docs and manpages
-del /usr/share/doc || true
-del /usr/share/man || true
-del /usr/share/info || true
-del /usr/share/locale || true
-del /usr/local/share/doc || true
-del /usr/local/share/man || true
-del /usr/local/share/info || true
-del /usr/local/share/locale || true
+rm $RM_FLAGS /usr/share/doc || true
+rm $RM_FLAGS /usr/share/man || true
+rm $RM_FLAGS /usr/share/info || true
+rm $RM_FLAGS /usr/share/locale || true
+rm $RM_FLAGS /usr/local/share/doc || true
+rm $RM_FLAGS /usr/local/share/man || true
+rm $RM_FLAGS /usr/local/share/info || true
+rm $RM_FLAGS /usr/local/share/locale || true
 
 # Remove all logs
-find / -type f -name "*.log" -delete 2>/dev/null || true
+find / $FIND_EXCLUDES -type f -name "*.log" -print0 | xargs -0 rm $RM_FLAGS || true
 
 # libtool leftovers
-find / -type f -name "*.la" -delete 2>/dev/null || true
+find / $FIND_EXCLUDES -type f -name "*.la" -print0 | xargs -0 rm $RM_FLAGS || true
 
 exit 0

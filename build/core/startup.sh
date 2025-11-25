@@ -109,8 +109,8 @@ if [ "$PENV_ENV_MODE" = "prepare" ]; then
 fi
 
 # Set up penv signals
-mkdir -p /temp/penv/signals
-export PENV_SIGNAL="/temp/penv/signals"
+mkdir -p /tmp/penv/signals
+export PENV_SIGNAL="/tmp/penv/signals"
 
 # Launch shell
 for shell in /bin/bash /usr/bin/bash /bin/sh /usr/bin/sh; do

@@ -6,17 +6,26 @@ if [ "$PENV_ENV_MODE" != "build" ] && [ "$PENV_ENV_MODE" != "mod" ] && [ -z "$PE
 fi
 
 VERBOSE=${PENV_CONFIG_VERBOSE:-0}
-if [ "${1:-}" = "-v" ]; then VERBOSE=1; fi
-log(){ [ $VERBOSE -eq 1 ] && echo "$*"; }
-del(){ if [ $VERBOSE -eq 1 ]; then echo "[DEL] $1"; rm -rf -- "$1"; else rm -rf -- "$1" >/dev/null 2>&1; fi }
-trunc(){ if [ -f "$1" ]; then if [ $VERBOSE -eq 1 ]; then echo "[TRUNC] $1"; : > "$1"; else : > "$1"; fi; fi }
+[ "${1:-}" = "-v" ] && VERBOSE=1
+
+# Set command flags based on verbosity
+if [ $VERBOSE -eq 1 ]; then
+    RM_FLAGS="-rfv"
+else
+    RM_FLAGS="-rf"
+fi
+
+if [ $VERBOSE -eq 1 ]; then
+    echo "Cleaning Debian-specific files..."
+fi
 
 # Remove apt lists and cached debs
-del /var/lib/apt/lists/* || true
-del /var/cache/apt || true
+rm $RM_FLAGS /var/lib/apt/lists/* || true
+rm $RM_FLAGS /var/cache/apt || true
 
-# remove apt/logs
-trunc /var/log/apt/history.log || true
-trunc /var/log/apt/term.log || true
+# remove apt logs
+for log in /var/log/apt/history.log /var/log/apt/term.log; do
+    [ -f "$log" ] && { [ $VERBOSE -eq 1 ] && echo "trunc: $log"; : > "$log"; }
+done
 
 exit 0

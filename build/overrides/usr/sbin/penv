@@ -47,7 +47,7 @@ penv::requires_version() {
 
 penv::clean(){
     # requires version 2 and PENV_SIGNAL to be set
-    if [ penv::requires_version 2 ] && [ -n "$PENV_SIGNAL" ]; then
+    if penv::requires_version 2 && [ -n "$PENV_SIGNAL" ]; then
         local signal_file="$PENV_SIGNAL/clean_signal_$$"
         cat > "$signal_file" << EOF
 export PENV_SIGNAL_CLEANUP=1
