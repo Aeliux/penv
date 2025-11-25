@@ -6,10 +6,10 @@ if [ "$PENV_ENV_MODE" != "build" ] && [ "$PENV_ENV_MODE" != "mod" ]; then
 fi
 
 VERBOSE=0
-if [[ "${1:-}" == "-v" ]]; then VERBOSE=1; fi
-log(){ [[ $VERBOSE -eq 1 ]] && echo "$*"; }
-del(){ if [[ $VERBOSE -eq 1 ]]; then echo "[DEL] $1"; rm -rf -- "$1"; else rm -rf -- "$1" >/dev/null 2>&1; fi }
-trunc(){ if [[ -f "$1" ]]; then if [[ $VERBOSE -eq 1 ]]; then echo "[TRUNC] $1"; : > "$1"; else : > "$1"; fi; fi }
+if [ "${1:-}" = "-v" ]; then VERBOSE=1; fi
+log(){ [ $VERBOSE -eq 1 ] && echo "$*"; }
+del(){ if [ $VERBOSE -eq 1 ]; then echo "[DEL] $1"; rm -rf -- "$1"; else rm -rf -- "$1" >/dev/null 2>&1; fi }
+trunc(){ if [ -f "$1" ]; then if [ $VERBOSE -eq 1 ]; then echo "[TRUNC] $1"; : > "$1"; else : > "$1"; fi; fi }
 
 # tmp and var tmp
 del /tmp/* || true
@@ -22,14 +22,14 @@ for h in /root/.bash_history /root/.ash_history /root/.zsh_history; do trunc "$h
 for u in /home/*; do for hh in "$u"/.*history; do trunc "$hh" || true; done; done
 
 # logs: truncate files, remove archived logs and journal
-for f in /var/log/*; do if [[ -f "$f" ]]; then trunc "$f"; fi; done
+for f in /var/log/*; do if [ -f "$f" ]; then trunc "$f"; fi; done
 del /var/log/*.gz || true
 del /var/log/*.[0-9] || true
 del /var/log/journal || true
 
 # runtime caches and thumbnails
 del /var/cache/fontconfig || true
-find / -type d -name "__pycache__" -prune -exec bash -c 'if [[ $0 == "" ]]; then exit 0; fi; rm -rf "$0" >/dev/null 2>&1' {} \; 2>/dev/null || true
+find / -type d -name "__pycache__" -prune -exec rm -rf {} \; 2>/dev/null || true
 del /root/.cache/pip || true
 del /var/cache/pip || true
 del /root/.npm || true

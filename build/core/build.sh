@@ -5,6 +5,8 @@ readonly PENV_BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 export PENV_ENV_MODE="build"
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
 # Validate required environment variables at source time
 for _required_var in FAMILY DISTRO ROOTFS_DIR; do
     if [ -z "${!_required_var:-}" ]; then
@@ -59,6 +61,7 @@ build::chroot_script() {
     local script_path="$1"
     local script_name
     script_name="$(basename "$script_path")"
+    local relative_path="${script_path#$script_dir/}"
     local temp_script="/tmp/penv_${script_name}_$$"
     
     if [ ! -f "$script_path" ]; then
@@ -66,7 +69,7 @@ build::chroot_script() {
         return 1
     fi
     
-    echo "Executing $script_name in chroot..."
+    echo "Executing $relative_path in chroot..."
     mkdir -p "$ROOTFS_DIR/tmp"
     
     # Copy script to temp location
@@ -77,17 +80,21 @@ build::chroot_script() {
     
     chmod +x "$ROOTFS_DIR$temp_script"
     
-    # Execute in chroot and capture result
-    local exit_code=0
-    if ! chroot "$ROOTFS_DIR" /bin/sh "$temp_script"; then
-        exit_code=$?
-        echo "Error: Script execution failed with exit code $exit_code" >&2
-    fi
+    # Execute in chroot and capture result explicitly
+    set +e
+    chroot "$ROOTFS_DIR" /bin/sh "$temp_script"
+    local exit_code=$?
+    set -e
     
     # Clean up
     rm -f "$ROOTFS_DIR$temp_script"
     
-    return $exit_code
+    if [ $exit_code -ne 0 ]; then
+        echo "Error: Script $relative_path failed with exit code $exit_code" >&2
+        return $exit_code
+    fi
+    
+    return 0
 }
 
 # Main setup function
@@ -96,9 +103,6 @@ build::setup() {
         echo "Usage: build::setup" >&2
         return 1
     fi
-    
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
     
     # Create penv directory structure
     _create_directories \
@@ -127,7 +131,10 @@ build::setup() {
     cp "$script_dir/build/universal/basic-cleanup.sh" "$ROOTFS_DIR"/penv/cleanup.d/99-basic-cleanup.sh
 
     # Apply universal patches
-    build::chroot_script "$script_dir/build/universal/patch.sh"
+    if ! build::chroot_script "$script_dir/build/universal/patch.sh"; then
+        echo "Error: Universal patch script failed" >&2
+        return 1
+    fi
     
     echo "Penv ${PENV_VERSION} setup completed successfully"
 }
@@ -184,5 +191,8 @@ build::finalize() {
     fi
 
     echo "Cleaning up..."
-    build::chroot_script "$script_dir/build/universal/cleanup.sh"
+    if ! build::chroot_script "$script_dir/build/universal/cleanup.sh"; then
+        echo "Error: Cleanup script failed" >&2
+        return 1
+    fi
 }

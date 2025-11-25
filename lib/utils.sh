@@ -249,7 +249,17 @@ extract_tarball(){
 # Setup environment for proot (resolv.conf, etc)
 setup_proot_env(){
   local rootfs="$1"
+
+  local penv_version
+  penv_version=$(cat "$rootfs/penv/metadata/version" 2>/dev/null || echo "unknown")
+
+  # Show penv version if available
+  if [[ "$penv_version" != "unknown" ]]; then
+    info "Detected penv version: $penv_version"
+  fi
   
+  info "Setting up environment..."
+
   # Ensure essential directories exist (device files removed at build time)
   mkdir -p "$rootfs/dev" "$rootfs/proc" "$rootfs/sys" 2>/dev/null || true
   
@@ -267,9 +277,6 @@ setup_proot_env(){
   if [[ -f /etc/group ]]; then
     cp -L /etc/group "$rootfs/etc/group" 2>/dev/null || true
   fi
-  
-  local penv_version
-  penv_version=$(cat "$rootfs/penv/metadata/version" 2>/dev/null || echo "unknown")
 
   # Run any version-specific proot setup here if needed
   case "$penv_version" in
@@ -279,6 +286,7 @@ setup_proot_env(){
     2|2.*)
       # Run startup script in prepare mode to set up environment
       if [[ "$PENV_ENV_MODE" = "prepare" ]] && [[ -f "$rootfs/penv/startup.sh" ]]; then
+        info "Running penv prepare scripts..."
         exec_in_proot "$rootfs"
       fi
       ;;
@@ -293,6 +301,8 @@ setup_proot_env(){
   # This ensures all directories are world-readable and executable
   info "Fixing permissions..."
   find "$rootfs" -type d -exec chmod a+rx {} \; 2>/dev/null || true
+
+  msg "Environment setup complete"
   
   return 0
 }

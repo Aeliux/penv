@@ -1,5 +1,3 @@
-#!/bin/sh
-
 # Debian-specific runtime environment setup
 # Source this before launching the shell in Debian-based environments
 

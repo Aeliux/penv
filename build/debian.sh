@@ -99,7 +99,7 @@ if [ -d "$ROOTFS_DIR" ]; then
 fi
 
 # Create parent directory if it doesn't exist
-mkdir "$(dirname "$ROOTFS_DIR")" || exit 1
+mkdir -p "$(dirname "$ROOTFS_DIR")" || exit 1
 
 # Create rootfs using debootstrap
 echo "Running debootstrap..."
@@ -111,17 +111,37 @@ else
 fi
 
 # Setup penv in rootfs
-build::setup || exit 1
+if ! build::setup; then
+    echo "Error: build::setup failed" >&2
+    exit 1
+fi
 
 # Copy debian scripts
-cp build/debian/start.sh "$ROOTFS_DIR/penv/startup.d/01-debian.sh" || exit 1
-cp build/debian/cleanup.sh "$ROOTFS_DIR/penv/cleanup.d/01-debian.sh" || exit 1
+if ! cp build/debian/start.sh "$ROOTFS_DIR/penv/startup.d/01-debian.sh"; then
+    echo "Error: Failed to copy start.sh" >&2
+    exit 1
+fi
+
+if ! cp build/debian/cleanup.sh "$ROOTFS_DIR/penv/cleanup.d/01-debian.sh"; then
+    echo "Error: Failed to copy cleanup.sh" >&2
+    exit 1
+fi
 
 # Apply Debian-based distro patches
-build::chroot_script "build/debian/patch.sh" || exit 1
-build::chroot_script "build/debian/cleanup.sh" || exit 1
+if ! build::chroot_script "build/debian/patch.sh"; then
+    echo "Error: Debian patch script failed" >&2
+    exit 1
+fi
 
-build::finalize || exit 1
+if ! build::chroot_script "build/debian/cleanup.sh"; then
+    echo "Error: Debian cleanup script failed" >&2
+    exit 1
+fi
+
+if ! build::finalize; then
+    echo "Error: build::finalize failed" >&2
+    exit 1
+fi
 
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
