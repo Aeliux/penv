@@ -279,32 +279,42 @@ setup_proot_env(){
   fi
 
   # Run any version-specific proot setup here if needed
-  case "$penv_version" in
-    1)
-      # No special setup needed for version 1
-      ;;
-    2|2.*)
-      # Run startup script in prepare mode to set up environment
-      if [[ "$PENV_ENV_MODE" = "prepare" ]] && [[ -f "$rootfs/penv/startup.sh" ]]; then
-        info "Running penv prepare scripts..."
-        exec_in_proot "$rootfs"
-      fi
-      ;;
-    *)
-      # Unknown version, no special setup
-      ;;
-  esac
-
-  # Fix directory permissions for proot -0 compatibility
-  # When tarballs created by root are extracted by non-root users,
-  # proot with fake root (-0) fails to access directories
-  # This ensures all directories are world-readable and executable
-  info "Fixing permissions..."
-  find "$rootfs" -type d -exec chmod a+rx {} \; 2>/dev/null || true
+  if requires_version "$penv_version" "2" && [[ "$PENV_ENV_MODE" = "prepare" ]]; then
+    info "Preparing penv v2+ environment..."
+    exec_in_proot "$rootfs"
+  fi
 
   msg "Environment setup complete"
   
   return 0
+}
+
+requires_version() {
+    local PENV_VERSION="$1"
+    local required_version="$2"
+
+    if [ "$PENV_VERSION" = "$required_version" ]; then
+        return 0
+    else
+        # compare versions
+        local IFS=.
+        local i ver1=($PENV_VERSION) ver2=($required_version)
+        # fill empty fields in ver1 with zeros
+        for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
+            ver1[i]=0
+        done
+        for ((i=0; i<${#ver1[@]}; i++)); do
+            if [ -z "${ver2[i]}" ]; then
+                ver2[i]=0
+            fi
+            if ((10#${ver1[i]} < 10#${ver2[i]})); then
+                return 1
+            elif ((10#${ver1[i]} > 10#${ver2[i]})); then
+                return 0
+            fi
+        done
+        return 0
+    fi
 }
 
 # Find available shell in rootfs
