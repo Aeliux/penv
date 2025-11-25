@@ -42,10 +42,6 @@ fi
 
 . build/core/build.sh
 
-# Ensure output directory exists
-mkdir -p "$(dirname "$OUTPUT_FILE")"
-chmod 755 "$(dirname "$OUTPUT_FILE")"
-
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) rootfs..."
 
 # Check if debootstrap is installed
@@ -116,32 +112,14 @@ if ! build::setup; then
     exit 1
 fi
 
-# Copy debian scripts
-if ! cp build/debian/start.sh "$ROOTFS_DIR/penv/startup.d/01-debian.sh"; then
-    echo "Error: Failed to copy start.sh" >&2
-    exit 1
-fi
-
-if ! cp build/debian/cleanup.sh "$ROOTFS_DIR/penv/cleanup.d/01-debian.sh"; then
-    echo "Error: Failed to copy cleanup.sh" >&2
-    exit 1
-fi
-
-# Apply Debian-based distro patches
-if ! build::chroot_script "build/debian/patch.sh"; then
-    echo "Error: Debian patch script failed" >&2
-    exit 1
-fi
-
-if ! build::chroot_script "build/debian/cleanup.sh"; then
-    echo "Error: Debian cleanup script failed" >&2
-    exit 1
-fi
-
 if ! build::finalize; then
     echo "Error: build::finalize failed" >&2
     exit 1
 fi
+
+# Ensure output directory exists
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+chmod 755 "$(dirname "$OUTPUT_FILE")"
 
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
