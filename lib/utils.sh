@@ -356,7 +356,7 @@ exec_in_proot(){
       local shell_path
       shell_path=$(find_shell "$rootfs")
       if [[ -n "$shell_path" ]]; then
-        cmd=("$shell_path" --login)
+        cmd=("$shell_path" -l)
       else
         err "No shell found in rootfs"
         return 1
@@ -367,10 +367,13 @@ exec_in_proot(){
   # Check if running as root (UID 0)
   if [[ $EUID -eq 0 ]]; then
     # Mount necessary pseudo-filesystems
-    mount --bind /dev "$rootfs/dev" 2>/dev/null || true
-    mount --bind /proc "$rootfs/proc" 2>/dev/null || true
-    mount --bind /sys "$rootfs/sys" 2>/dev/null || true
-    mount --bind "$HOME" "$rootfs/mnt" 2>/dev/null || true
+    mount --rbind /dev "$rootfs/dev" || true
+    mount -t proc proc "$rootfs/proc" || true
+    mount -t sysfs sys "$rootfs/sys" || true
+    
+    if [[ "$PENV_CONFIG_MNT_HOME" -eq 1 ]]; then
+      mount --bind "$HOME" "$rootfs/mnt" || true
+    fi
     
     export PENV_ENV_PARENT="chroot"
     # Execute in chroot
@@ -378,27 +381,33 @@ exec_in_proot(){
     local exit_code=$?
     
     # Cleanup mounts
-    umount "$rootfs/dev" 2>/dev/null || true
-    umount "$rootfs/proc" 2>/dev/null || true
-    umount "$rootfs/sys" 2>/dev/null || true
-    umount "$rootfs/mnt" 2>/dev/null || true
+    umount -l "$rootfs/dev" || true
+    umount -l "$rootfs/proc" || true
+    umount -l "$rootfs/sys" || true
+    umount -l "$rootfs/mnt" 2>/dev/null || true
     
     return $exit_code
   else
     # Use proot for non-root users
     require_proot
     
+    local proot_args=(
+      -0                        # Fake root user
+      -r .                      # Rootfs path
+      -b /dev -b /proc -b /sys  # Bind mount pseudo-filesystems
+      -w /                      # Set working directory to /
+    )
+    if [[ "$PENV_CONFIG_MNT_HOME" -eq 1 ]]; then
+      proot_args+=(-b "$HOME":"/mnt")
+    fi
+
     # Change to rootfs directory to fix proot working directory issues
     # When proot is launched from outside the rootfs with -r <path>,
     # the current directory (.) gets confused. Using -r . from inside
     # the rootfs directory fixes this.
     pushd "$rootfs" >/dev/null || return 1
     
-    proot -0 -r . \
-      -b /dev -b /proc -b /sys \
-      -b "$HOME":"/mnt" \
-      -w / \
-      "${cmd[@]}"
+    proot "${proot_args[@]}" "${cmd[@]}"
     
     popd >/dev/null || return 1
   fi

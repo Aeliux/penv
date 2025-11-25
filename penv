@@ -8,6 +8,11 @@ IFS=$'\n\t'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
 
+# Source configurations
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+  source "$SCRIPT_DIR/config.sh"
+fi
+
 # Source all library modules
 source "$LIB_DIR/config.sh"
 source "$LIB_DIR/utils.sh"
