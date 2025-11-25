@@ -4,21 +4,14 @@ set -e
 # /penv/startup.sh
 # This script sets up the runtime environment and launches a shell
 
+if [ "$PENV_ENV_MODE" = "build" ]; then
+    echo "Error: /penv/startup.sh should not be run in build mode" >&2
+    exit 1
+fi
+
 # Cleanup function
 cleanup() {
-    rm -rf /tmp/* 2>/dev/null || true
-    rm -rf /var/tmp/* 2>/dev/null || true
-    rm -rf /var/run/*.pid 2>/dev/null || true
-    rm -rf /run/*.pid 2>/dev/null || true
-
-    # Delete temp files generated during runtime
-    if [ "$PENV_ENV_MODE" = "mod" ]; then
-        rm -f "$HOME"/.bash_history 2>/dev/null || true
-        rm -f "$HOME"/.zsh_history 2>/dev/null || true
-        rm -f "$HOME"/.sudo_as_admin_successful 2>/dev/null || true
-    fi
-
-    # Run any additional cleanup scripts in /penv/cleanup.d
+    # Run cleanup scripts in /penv/cleanup.d
     if [ -d /penv/cleanup.d ]; then
         for script in /penv/cleanup.d/*; do
             [ -x "$script" ] || continue
@@ -32,10 +25,6 @@ trap cleanup EXIT INT TERM
 export PENV_ENV_NAME=${PENV_ENV_NAME:-"unknown"}
 export PENV_ENV_MODE=${PENV_ENV_MODE:-"unknown"}
 export PENV_ENV_DISTRO="unknown"
-# Get penv metadata
-if [ -f /penv/metadata/distro ]; then
-    PENV_ENV_DISTRO=$(cat /penv/metadata/distro)
-fi
 
 # Unset all host environment variables except safe ones and PENV*
 _SAFE_VARS="HOME USER SHELL TERM LANG LC_ALL LC_CTYPE PATH PWD OLDPWD SHLVL _"
@@ -68,15 +57,45 @@ export LC_ALL=${LC_ALL:-C.UTF-8}
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SYSTEMD_OFFLINE=1
 
-# Ensure home directory exists
-mkdir -p "$HOME" 2>/dev/null || true
+# Load metadata if available
+if [ -f /penv/metadata.sh ]; then
+    . /penv/metadata.sh
+    export PENV_ENV_VERSION="$PENV_VERSION"
+    export PENV_ENV_DISTRO="$PENV_METADATA_DISTRO"
+    export PENV_ENV_FAMILY="$PENV_METADATA_FAMILY"
+    export PENV_ENV_TIMESTAMP="$PENV_METADATA_TIMESTAMP"
 
-# Source all startup.d scripts (skip if mode is mod)
-if [ "$PENV_ENV_MODE" != "mod" ] && [ -d /penv/startup.d ]; then
+    export PENV_VERSION
+    export PENV_METADATA_DISTRO
+    export PENV_METADATA_FAMILY
+    export PENV_METADATA_TIMESTAMP
+fi
+
+# Ensure home directory exists
+if [ ! -d "$HOME" ]; then
+    mkdir -p "$HOME"
+    chown root:root "$HOME"
+    chmod 700 "$HOME"
+
+    # Copy skel files if available
+    if [ -d /etc/skel ]; then
+        cp -a /etc/skel/. "$HOME"/
+        chown -R root:root "$HOME"
+        chmod -R go-rwx "$HOME"
+    fi
+fi
+
+# Source all startup.d scripts
+if [ -d /penv/startup.d ]; then
     for script in /penv/startup.d/*; do
         [ -r "$script" ] || continue
         . "$script"
     done
+fi
+
+# exit if mode is prepare
+if [ "$PENV_ENV_MODE" = "prepare" ]; then
+    exit 0
 fi
 
 # Launch shell

@@ -268,6 +268,25 @@ setup_proot_env(){
     cp -L /etc/group "$rootfs/etc/group" 2>/dev/null || true
   fi
   
+  local penv_version
+  penv_version=$(cat "$rootfs/penv/metadata/version" 2>/dev/null || echo "unknown")
+
+  # Run any version-specific proot setup here if needed
+  case "$penv_version" in
+    1)
+      # No special setup needed for version 1
+      ;;
+    2|2.*)
+      # Run startup script in prepare mode to set up environment
+      if [[ "$PENV_ENV_MODE" = "prepare" ]] && [[ -f "$rootfs/penv/startup.sh" ]]; then
+        exec_in_proot "$rootfs"
+      fi
+      ;;
+    *)
+      # Unknown version, no special setup
+      ;;
+  esac
+
   # Fix directory permissions for proot -0 compatibility
   # When tarballs created by root are extracted by non-root users,
   # proot with fake root (-0) fails to access directories

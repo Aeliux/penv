@@ -60,7 +60,6 @@ env::create(){
   # Validate distro file
   if [[ ! -s "$distro_file" ]]; then
     err "Distro file is empty or corrupted: $distro_file"
-    info "Re-download it: ${C_BOLD}penv clean $distro_id && penv download $distro_id${C_RESET}"
     return 1
   fi
   
@@ -73,6 +72,8 @@ env::create(){
     return 1
   }
   
+  export PENV_ENV_MODE="prepare"
+
   # Setup proot environment
   setup_proot_env "$env_root"
   

@@ -2,6 +2,12 @@
 
 set -euo pipefail
 
+# Check if running as root
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Error: This script must be run as root"
+    exit 1
+fi
+
 cd "$(dirname "$0")/.."
 
 # Configuration
@@ -34,6 +40,8 @@ if [ -z "$OUTPUT_FILE" ]; then
     OUTPUT_FILE="output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs.tar.gz"
 fi
 
+. build/core/build.sh
+
 # Ensure output directory exists
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 chmod 755 "$(dirname "$OUTPUT_FILE")"
@@ -43,13 +51,6 @@ echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) rootfs..."
 # Check if debootstrap is installed
 if ! command -v debootstrap >/dev/null 2>&1; then
     echo "Error: debootstrap is not installed"
-    echo "Install it with: sudo apt-get install debootstrap"
-    exit 1
-fi
-
-# Check if running as root
-if [ "$(id -u)" -ne 0 ]; then
-    echo "Error: This script must be run as root"
     exit 1
 fi
 
@@ -98,55 +99,29 @@ if [ -d "$ROOTFS_DIR" ]; then
 fi
 
 # Create parent directory if it doesn't exist
-mkdir -p "$(dirname "$ROOTFS_DIR")"
+mkdir "$(dirname "$ROOTFS_DIR")" || exit 1
 
 # Create rootfs using debootstrap
 echo "Running debootstrap..."
 if [ "$DISTRO" = "ubuntu" ]; then
     # Ubuntu requires additional components
-    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --components=main,universe --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR"
+    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --components=main,universe --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || exit 1
 else
-    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR"
+    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || exit 1
 fi
 
-# Apply penv patches
-echo "Applying penv patches..."
-if [ ! -f helpers/setup.sh ]; then
-    echo "Error: helpers/setup.sh not found"
-    exit 1
-fi
-FAMILY="$FAMILY" DISTRO="$DISTRO" helpers/setup.sh "$ROOTFS_DIR"
+# Setup penv in rootfs
+build::setup || exit 1
 
 # Copy debian scripts
-cp helpers/deb-start.sh "$ROOTFS_DIR/penv/startup.d/00-debian.sh" || exit 1
-cp helpers/deb-mod-cleanup.sh "$ROOTFS_DIR/penv/cleanup.d/00-deb-mod-cleanup.sh" || exit 1
-
-chmod +x "$ROOTFS_DIR/penv/startup.d/00-debian.sh"
-chmod +x "$ROOTFS_DIR/penv/cleanup.d/00-deb-mod-cleanup.sh"
+cp build/debian/start.sh "$ROOTFS_DIR/penv/startup.d/01-debian.sh" || exit 1
+cp build/debian/cleanup.sh "$ROOTFS_DIR/penv/cleanup.d/01-debian.sh" || exit 1
 
 # Apply Debian-based distro patches
-echo "Applying ${DISTRO^}-based patches..."
-if [ -f helpers/patches/debian.sh ]; then
-    mkdir -p "$ROOTFS_DIR/tmp"
-    cp helpers/patches/debian.sh "$ROOTFS_DIR/tmp/debian.sh"
-    chmod +x "$ROOTFS_DIR/tmp/debian.sh"
-    chroot "$ROOTFS_DIR" /bin/sh /tmp/debian.sh
-    rm -f "$ROOTFS_DIR/tmp/debian.sh"
-fi
+build::chroot_script "build/debian/patch.sh" || exit 1
+build::chroot_script "build/debian/cleanup.sh" || exit 1
 
-# Basic cleanup
-echo "Cleaning up rootfs..."
-rm -rf "$ROOTFS_DIR"/var/cache/apt/archives/*.deb
-rm -rf "$ROOTFS_DIR"/var/lib/apt/lists/*
-rm -rf "$ROOTFS_DIR"/tmp/*
-
-# Finalize rootfs
-echo "Finalizing rootfs..."
-if [ ! -f helpers/finalize.sh ]; then
-    echo "Error: helpers/finalize.sh not found"
-    exit 1
-fi
-helpers/finalize.sh "$ROOTFS_DIR"
+build::finalize || exit 1
 
 # Create tar.gz archive
 echo "Creating tar.gz archive..."
