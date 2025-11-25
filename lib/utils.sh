@@ -370,6 +370,7 @@ exec_in_proot(){
     mount --bind /dev "$rootfs/dev" 2>/dev/null || true
     mount --bind /proc "$rootfs/proc" 2>/dev/null || true
     mount --bind /sys "$rootfs/sys" 2>/dev/null || true
+    mount --bind "$HOME" "$rootfs/mnt" 2>/dev/null || true
     
     export PENV_ENV_PARENT="chroot"
     # Execute in chroot
@@ -380,6 +381,7 @@ exec_in_proot(){
     umount "$rootfs/dev" 2>/dev/null || true
     umount "$rootfs/proc" 2>/dev/null || true
     umount "$rootfs/sys" 2>/dev/null || true
+    umount "$rootfs/mnt" 2>/dev/null || true
     
     return $exit_code
   else
@@ -394,6 +396,7 @@ exec_in_proot(){
     
     proot -0 -r . \
       -b /dev -b /proc -b /sys \
+      -b "$HOME":"/mnt" \
       -w / \
       "${cmd[@]}"
     
