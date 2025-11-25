@@ -4,131 +4,99 @@ set -euo pipefail
 
 # Check if running as root
 if [ "$(id -u)" -ne 0 ]; then
-    echo "Error: This script must be run as root"
+    echo "Error: This script must be run as root" >&2
     exit 1
 fi
 
 cd "$(dirname "$0")/.."
 
 # Configuration
-FAMILY="debian"
-DISTRO="${DISTRO:-debian}"  # debian or ubuntu
+readonly FAMILY="debian"
+readonly DISTRO="${DISTRO:-debian}"  # debian or ubuntu
 DISTRO_RELEASE="${DISTRO_RELEASE:-}"
-DISTRO_ARCH="${DISTRO_ARCH:-amd64}"
-ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-rootfs}"
+readonly DISTRO_ARCH="${DISTRO_ARCH:-amd64}"
+readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-rootfs}"
 OUTPUT_FILE="${OUTPUT_FILE:-}"
 MIRROR="${MIRROR:-}"
 
-# Set distro-specific defaults
+# Distro configuration map
 case "$DISTRO" in
     debian)
         DISTRO_RELEASE="${DISTRO_RELEASE:-bookworm}"
         MIRROR="${MIRROR:-http://deb.debian.org/debian}"
+        KEYRING_PACKAGE="debian-archive-keyring"
+        KEYRING_FILE="/usr/share/keyrings/debian-archive-keyring.gpg"
+        FALLBACK_MIRROR="http://ftp.us.debian.org/debian"
+        DEBOOTSTRAP_OPTS="--arch=$DISTRO_ARCH --variant=minbase"
         ;;
     ubuntu)
         DISTRO_RELEASE="${DISTRO_RELEASE:-noble}"
         MIRROR="${MIRROR:-http://archive.ubuntu.com/ubuntu}"
+        KEYRING_PACKAGE="ubuntu-keyring"
+        KEYRING_FILE="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
+        FALLBACK_MIRROR="http://us.archive.ubuntu.com/ubuntu"
+        DEBOOTSTRAP_OPTS="--arch=$DISTRO_ARCH --variant=minbase --components=main,universe"
         ;;
     *)
-        echo "Error: Unsupported distro '$DISTRO'. Use 'debian' or 'ubuntu'."
+        echo "Error: Unsupported distro '$DISTRO'. Use 'debian' or 'ubuntu'." >&2
         exit 1
         ;;
 esac
 
-# Set output file if not specified
-if [ -z "$OUTPUT_FILE" ]; then
-    OUTPUT_FILE="output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs.tar.gz"
-fi
+OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs.tar.gz}"
 
+# Source build functions
 . build/core/build.sh
 
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) rootfs..."
 
-# Check if debootstrap is installed
+# Verify dependencies
 if ! command -v debootstrap >/dev/null 2>&1; then
-    echo "Error: debootstrap is not installed"
+    echo "Error: debootstrap is not installed" >&2
     exit 1
 fi
 
-# Install archive keyring if missing
-case "$DISTRO" in
-    debian)
-        if [ ! -f /usr/share/keyrings/debian-archive-keyring.gpg ]; then
-            echo "Installing debian-archive-keyring..."
-            apt-get update
-            apt-get install -y debian-archive-keyring
-        fi
-        ;;
-    ubuntu)
-        if [ ! -f /usr/share/keyrings/ubuntu-archive-keyring.gpg ]; then
-            echo "Installing ubuntu-keyring..."
-            apt-get update
-            apt-get install -y ubuntu-keyring
-        fi
-        ;;
-esac
+# Ensure keyring is installed
+if [ ! -f "$KEYRING_FILE" ]; then
+    echo "Installing $KEYRING_PACKAGE..."
+    apt-get update -qq
+    apt-get install -y "$KEYRING_PACKAGE"
+fi
 
-# Test network connectivity
+# Test mirror connectivity
 echo "Testing network connectivity..."
 if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DISTRO_RELEASE/Release" 2>/dev/null; then
-    echo "Error: Cannot reach $MIRROR"
-    echo "Trying alternative mirror..."
-    case "$DISTRO" in
-        debian)
-            MIRROR="http://ftp.us.debian.org/debian"
-            ;;
-        ubuntu)
-            MIRROR="http://us.archive.ubuntu.com/ubuntu"
-            ;;
-    esac
+    echo "Warning: Primary mirror unreachable, trying fallback..." >&2
+    MIRROR="$FALLBACK_MIRROR"
     if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DISTRO_RELEASE/Release" 2>/dev/null; then
-        echo "Error: Cannot reach any ${DISTRO^} mirrors. Check your network connection and DNS."
+        echo "Error: Cannot reach any ${DISTRO^} mirrors. Check network/DNS." >&2
         exit 1
     fi
-    echo "Using mirror: $MIRROR"
 fi
+echo "Using mirror: $MIRROR"
 
-# Clean up previous build
-if [ -d "$ROOTFS_DIR" ]; then
-    echo "Removing existing rootfs directory..."
-    rm -rf "$ROOTFS_DIR"
-fi
+# Clean up and prepare
+[ -d "$ROOTFS_DIR" ] && rm -rf "$ROOTFS_DIR"
+mkdir -p "$(dirname "$ROOTFS_DIR")"
 
-# Create parent directory if it doesn't exist
-mkdir -p "$(dirname "$ROOTFS_DIR")" || exit 1
-
-# Create rootfs using debootstrap
+# Bootstrap rootfs
 echo "Running debootstrap..."
-if [ "$DISTRO" = "ubuntu" ]; then
-    # Ubuntu requires additional components
-    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --components=main,universe --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || exit 1
-else
-    debootstrap --arch="$DISTRO_ARCH" --variant=minbase --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || exit 1
-fi
-
-# Setup penv in rootfs
-if ! build::setup; then
-    echo "Error: build::setup failed" >&2
+debootstrap $DEBOOTSTRAP_OPTS --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || {
+    echo "Error: debootstrap failed" >&2
     exit 1
-fi
+}
 
-if ! build::finalize; then
-    echo "Error: build::finalize failed" >&2
-    exit 1
-fi
+# Setup and finalize
+build::setup || { echo "Error: build::setup failed" >&2; exit 1; }
+build::finalize || { echo "Error: build::finalize failed" >&2; exit 1; }
 
-# Ensure output directory exists
-mkdir -p "$(dirname "$OUTPUT_FILE")"
-chmod 755 "$(dirname "$OUTPUT_FILE")"
-
-# Create tar.gz archive
+# Create archive
 echo "Creating tar.gz archive..."
-rm -f "$OUTPUT_FILE"
+mkdir -p "$(dirname "$OUTPUT_FILE")"
 tar -czf "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
 chmod 644 "$OUTPUT_FILE"
 
-# Clean up rootfs directory
-echo "Removing temporary rootfs directory..."
+# Cleanup
 rm -rf "$ROOTFS_DIR"
 
 echo "Done! rootfs saved to: $OUTPUT_FILE"
