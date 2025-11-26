@@ -13,6 +13,10 @@ cleanup() {
         done
     fi
 
+    if [ "$PENV_ENV_MODE" = "build" ] && [ "$PENV_BUILD_STAGE" != "cleanup" ]; then
+        return 0
+    fi
+
     # Run cleanup scripts
     if [ -d /penv/cleanup.d ]; then
         for script in /penv/cleanup.d/*; do
