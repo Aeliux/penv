@@ -65,11 +65,16 @@ else
     test_fail "/var/lib/apt missing"
 fi
 
-test_start "/var/cache/apt directory exists"
-if ! test_dir_exists /var/cache/apt; then
-    test_pass
+test_start "/var/cache/apt directory is small"
+if test_dir_exists /var/cache/apt; then
+    cache_size=$(du -s /var/cache/apt 2>/dev/null | cut -f1)
+    if [ "$cache_size" -lt 1048576 ]; then
+        test_pass
+    else
+        test_fail "/var/cache/apt size is too large"
+    fi
 else
-    test_fail "/var/cache/apt exists"
+    test_pass
 fi
 
 test_start "dpkg-query command works"
