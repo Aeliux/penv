@@ -1,0 +1,6 @@
+DPkg::Post-Invoke {"/bin/rm -f /var/cache/apt/archives/*.deb || true";};
+APT::Sandbox::User "root";
+Acquire::Retries "3";
+Acquire::http::Timeout "10";
+Dir::Cache::srcpkgcache "";
+Dir::Cache::pkgcache "";
