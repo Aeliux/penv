@@ -120,11 +120,12 @@ nano
 ping
 ping6
 ip
-# nslookup / dig type utilities (dnsutils)
-dig
-nslookup
 # Pager for viewing long output (often installed)
 less
 more
 # Signing and crypto utilities
 gpg
+# Command location utility
+which
+# File type detection
+file

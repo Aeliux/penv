@@ -80,3 +80,8 @@ ar
 ld
 nm
 strip
+# nslookup / dig type utilities (dnsutils)
+dig
+nslookup
+# Binary analysis
+readelf
