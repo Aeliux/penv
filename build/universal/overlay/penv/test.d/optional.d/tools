@@ -1,0 +1,82 @@
+# OPTIONAL COMMANDS
+# Networking tools most users expect to be able to install quickly
+# URL fetcher, widely used in scripts
+curl
+# URL fetcher, simple, common on minimal images
+wget
+# OpenSSH client for remote connections (git+ssh, scp)
+ssh
+# OpenSSH server, only if SSH access to chroot is intended
+sshd
+# iproute2 utilities (preferred over net-tools)
+ip
+# net-tools legacy utilities (ifconfig, netstat)
+ifconfig
+netstat
+# Version control system commonly expected by developers
+git
+# Rsync for syncing files
+rsync
+# Archive/extract utilities
+unzip
+zip
+p7zip
+# Compression utils not in all minimal images
+xz-utils
+# Edtor
+vim
+# Build and compilation toolchain (developers usually install these)
+make
+# C compiler front-end
+gcc
+# C++ compiler
+g++
+# CMake build system
+cmake
+# pkg-config for finding libraries when building
+pkg-config
+# Language runtimes and package managers commonly needed by projects
+python3
+pip3
+node
+npm
+# Java runtime/build
+java
+javac
+# Ruby
+ruby
+# Debugging and profiling tools developers often expect to install
+strace
+lsof
+gdb
+valgrind
+# Monitoring and interactive process viewers
+top
+htop
+# Filesystem and block device helpers (useful for admin tasks, optional in chroot)
+lsblk
+blkid
+partx
+fdisk
+# Network scanning and debugging (optional and larger)
+nmap
+tcpdump
+# Netcat utilities
+nc
+# Locale packages (may be large — optional to include)
+locale
+# Container/namespace tools (useful in development)
+nsenter
+unshare
+# Profiling and tracing helpers
+perf
+# Misc useful tools
+htop
+ncdu
+tmux
+screen
+# Binary utilities for development
+ar
+ld
+nm
+strip

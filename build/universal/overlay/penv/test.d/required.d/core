@@ -1,0 +1,130 @@
+# MUST-HAVE COMMANDS
+# Basic Bourne-style shells and test utilities (shell builtin `[` is commonly symlinked to /bin/[)
+bash
+# POSIX-compatible shell (often /bin/sh -> dash or bash)
+sh
+# Lightweight POSIX shell frequently used as /bin/sh
+dash
+# Test expression utility (often provided by coreutils or shell builtin)
+[
+# Core file utilities and text processing (commonly present)
+# List directory contents
+ls
+# Copy files and directories
+cp
+# Move/rename files and directories
+mv
+# Remove files or directories
+rm
+# Make directories
+mkdir
+# Remove empty directories
+rmdir
+# Create hard/soft links
+ln
+# Print current working directory
+pwd
+# Print file type and permission info
+stat
+# Change file mode bits
+chmod
+# Change file owner and group
+chown
+# Change file group
+chgrp
+# Standard input/output concatenation and file dump
+cat
+# Print the first part of files
+head
+# Print the last part of files
+tail
+# Filter input using patterns (basic and extended via egrep/fgrep)
+grep
+# Stream editor for basic and complex edits
+sed
+# Pattern scanning and processing language
+awk
+# Copy file and set attributes (install helper)
+install
+# Split files by pattern/size
+split
+# Join lines from two files on a common field
+join
+# Print lines matching multiple files (filter variant)
+fgrep
+# Search for files in a directory hierarchy
+find
+# Run commands for each file found
+xargs
+# Evaluate arguments and print to stdout
+echo
+# Show or modify environment variables (builtin)
+env
+# Print environment variables
+printenv
+# Sort lines of text files
+sort
+# Unique adjacent lines
+uniq
+# Count lines/words/bytes
+wc
+# Compare files line-by-line
+diff
+# Compute file checksums (sha*, md5sum)
+sha256sum
+# POSIX test command for conditions (often /usr/bin/test)
+test
+# Create/remove device files, special files
+mknod
+# Utilities for handling compressed streams (gzip family)
+gzip
+gunzip
+zcat
+# Archive tools (tar)
+tar
+# System information and minimal process inspection (commonly present)
+uname
+# Hostname utilities
+hostname
+# Basic time and date
+date
+# Locale utilities
+locale
+localedef
+# Basic device and mount utilities (may be present in most distros)
+mount
+umount
+# Disk usage and file system free space
+du
+df
+# Process listing (procps)
+ps
+# PID utilities (pidof)
+pidof
+# Basic networking resolution helpers
+hostid
+# Basic binary utilities (coreutils): ln, basename, dirname, basename, readlink
+readlink
+basename
+dirname
+# Shell builtin for conditional exit (often provided by shell)
+true
+false
+# Basic archive compression utilities (bzip2/xz often included or expected)
+bzip2
+xz
+# Editors: many distros include at least a tiny vi or ed
+vi
+nano
+# Network utilities
+ping
+ping6
+ip
+# nslookup / dig type utilities (dnsutils)
+dig
+nslookup
+# Pager for viewing long output (often installed)
+less
+more
+# Signing and crypto utilities
+gpg

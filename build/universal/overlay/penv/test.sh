@@ -155,11 +155,11 @@ print_summary() {
     if [ $TESTS_FAILED -gt 0 ]; then
         echo "${C_BOLD}${C_RED}SOME TESTS FAILED!${C_RESET}"
         echo ""
-        return 1
+        return 2
     elif [ $TESTS_SKIPPED -gt 0 ]; then
         echo "${C_BOLD}${C_YELLOW}SOME TESTS WERE SKIPPED!${C_RESET}"
         echo ""
-        return 0
+        return 1
     else
         echo "${C_BOLD}${C_GREEN}ALL TESTS PASSED!${C_RESET}"
         echo ""

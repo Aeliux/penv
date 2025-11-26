@@ -1,0 +1,12 @@
+# Basic package manager commands for Debian-based systems (commonly expected on Debian/Ubuntu)
+apt
+apt-get
+dpkg
+# Link alternatives updater (Debian)
+update-alternatives
+# Init/helpers that many packages rely on during postinst (present on Debian base)
+debconf
+debconf-communicate
+# Essential dpkg helpers (present)
+dpkg-deb
+dpkg-query

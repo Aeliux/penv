@@ -103,6 +103,10 @@ build::chroot() {
     trap - EXIT
     _cleanup_mounts
     
+    if [ $exit_code -ne 0 ]; then
+        echo "Error: Command in chroot failed with exit code $exit_code" >&2
+    fi
+
     return $exit_code
 }
 
@@ -198,7 +202,7 @@ build::setup() {
     echo "Applying patches..."
 
     # make them executable first
-    find "$ROOTFS_DIR/penv/patch.d" -type f -exec chmod +x {} \; || true
+    find "$ROOTFS_DIR/penv/patch.d" -type f -exec chmod +x {} \;
     export PENV_BUILD_STAGE="patch"
     if ! build::chroot; then
         echo "Error: Penv setup failed" >&2
