@@ -174,16 +174,25 @@ build::setup() {
     for overlay in "universal" "$DISTRO"; do
         overlay_dir="$script_dir/build/$overlay/overlay"
         if [ -d "$overlay_dir" ]; then
-            if ! rsync -a --exclude='penv/metadata' "$overlay_dir" "$ROOTFS_DIR/"; then
+            if ! cp -a "$overlay_dir/." "$ROOTFS_DIR/"; then
                 echo "Error: Failed to apply overlay from $overlay_dir" >&2
                 return 1
             fi
+            # Verify copy
+            echo "Verifying overlay files from $overlay_dir..."
+            find "$overlay_dir" -type f | while read -r file; do
+                relative_path="${file#$overlay_dir/}"
+                if [ ! -e "$ROOTFS_DIR/$relative_path" ]; then
+                    echo "Error: Overlay file missing in rootfs: $relative_path" >&2
+                    return 1
+                fi
+            done
         fi
     done
     
     # Set up root user
     echo "Setting up root user..."
-    rsync -a "$ROOTFS_DIR/etc/skel/." "$ROOTFS_DIR/root/"
+    cp -a "$ROOTFS_DIR/etc/skel/." "$ROOTFS_DIR/root/"
     
     # Apply patches inside chroot
     echo "Applying patches..."
