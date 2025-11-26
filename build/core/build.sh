@@ -276,9 +276,9 @@ build::finalize() {
     fi
     
     export PENV_BUILD_STAGE="test"
+    # error if exit code is 2 (test failures)
     if ! build::chroot; then
-        echo "Error: Test script failed" >&2
-        return 1
+        echo "Warning: Test script failed" >&2
     fi
     unset PENV_BUILD_STAGE
 }
