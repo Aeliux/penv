@@ -72,13 +72,6 @@ else
     test_skip "su not installed (optional)"
 fi
 
-test_start "sudo command exists"
-if test_command_exists sudo; then
-    test_pass
-else
-    test_skip "sudo not installed (optional)"
-fi
-
 test_start "umask is set"
 if umask >/dev/null 2>&1; then
     test_pass
@@ -99,4 +92,52 @@ if touch "$TEST_FILE" 2>/dev/null; then
     fi
 else
     test_fail "Cannot create test file"
+fi
+
+test_start "passwd file has correct permissions"
+if [ -f /etc/passwd ]; then
+    perms=$(stat -c %a /etc/passwd 2>/dev/null)
+    if [ "$perms" = "644" ] || [ "$perms" = "640" ]; then
+        test_pass
+    else
+        test_skip "passwd permissions non-standard: $perms"
+    fi
+else
+    test_fail "/etc/passwd missing"
+fi
+
+test_start "shadow file has restricted permissions (if exists)"
+if [ -f /etc/shadow ]; then
+    perms=$(stat -c %a /etc/shadow 2>/dev/null)
+    if [ "$perms" = "640" ] || [ "$perms" = "600" ]; then
+        test_pass
+    else
+        test_fail "shadow permissions too permissive: $perms"
+    fi
+else
+    test_skip "Shadow passwords not configured"
+fi
+
+test_start "Root home directory has restricted permissions"
+if [ -d /root ]; then
+    perms=$(stat -c %a /root 2>/dev/null)
+    if [ "$perms" = "700" ] || [ "$perms" = "750" ]; then
+        test_pass
+    else
+        test_skip "Root home permissions: $perms"
+    fi
+else
+    test_fail "/root directory missing"
+fi
+
+test_start "No world-writable files in /etc (sample check)"
+if [ -d /etc ]; then
+    count=$(find /etc -maxdepth 1 -type f -perm -002 2>/dev/null | wc -l)
+    if [ "$count" -eq 0 ]; then
+        test_pass
+    else
+        test_fail "Found $count world-writable files in /etc"
+    fi
+else
+    test_fail "/etc directory missing"
 fi

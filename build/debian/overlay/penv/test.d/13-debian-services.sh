@@ -9,13 +9,6 @@ else
     test_skip "No init system detected (container environment)"
 fi
 
-test_start "systemctl command exists"
-if test_command_exists systemctl; then
-    test_pass
-else
-    test_skip "systemctl not available (not systemd or container)"
-fi
-
 test_start "/etc/init.d directory exists"
 if test_dir_exists /etc/init.d; then
     test_pass

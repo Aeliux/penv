@@ -377,7 +377,9 @@ exec_in_proot(){
   # Check if running as root (UID 0)
   if [[ $EUID -eq 0 ]]; then
     # Mount necessary pseudo-filesystems
-    mount --rbind /dev "$rootfs/dev" || true
+    mount --bind /dev "$rootfs/dev" || true
+    mount --bind /dev/pts "$rootfs/dev/pts" || true
+    mount --bind /dev/shm "$rootfs/dev/shm" || true
     mount -t proc proc "$rootfs/proc" || true
     mount -t sysfs sys "$rootfs/sys" || true
     
@@ -392,6 +394,8 @@ exec_in_proot(){
     
     # Cleanup mounts
     umount -l "$rootfs/dev" || true
+    umount -l "$rootfs/dev/pts" || true
+    umount -l "$rootfs/dev/shm" || true
     umount -l "$rootfs/proc" || true
     umount -l "$rootfs/sys" || true
     umount -l "$rootfs/mnt" 2>/dev/null || true

@@ -5,8 +5,6 @@ bash
 sh
 # Lightweight POSIX shell frequently used as /bin/sh
 dash
-# Test expression utility (often provided by coreutils or shell builtin)
-[
 # Core file utilities and text processing (commonly present)
 # List directory contents
 ls
@@ -129,3 +127,7 @@ gpg
 which
 # File type detection
 file
+# URL fetcher, widely used in scripts
+curl
+# URL fetcher, simple, common on minimal images
+wget

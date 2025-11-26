@@ -89,3 +89,17 @@ if test_file_exists /etc/os-release; then
 else
     test_fail "/etc/os-release missing"
 fi
+
+test_start "PAM configuration exists"
+if [ -d /etc/pam.d ] && [ -f /etc/pam.d/common-auth -o -f /etc/pam.d/system-auth ]; then
+    test_pass
+else
+    test_skip "PAM not configured (may not be needed)"
+fi
+
+test_start "SSL certificate directory exists"
+if [ -d /etc/ssl/certs ] || [ -d /usr/share/ca-certificates ]; then
+    test_pass
+else
+    test_skip "SSL certificates not configured"
+fi

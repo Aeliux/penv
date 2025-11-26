@@ -1,9 +1,6 @@
 # OPTIONAL COMMANDS
-# Networking tools most users expect to be able to install quickly
-# URL fetcher, widely used in scripts
-curl
-# URL fetcher, simple, common on minimal images
-wget
+# Openssl for SSL/TLS related tasks
+openssl
 # OpenSSH client for remote connections (git+ssh, scp)
 ssh
 # OpenSSH server, only if SSH access to chroot is intended

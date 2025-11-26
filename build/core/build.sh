@@ -66,6 +66,8 @@ build::chroot() {
         local cleanup_exit_code=$?
         [ $mounted_sys -eq 1 ] && { umount -l "$ROOTFS_DIR/sys" || echo "Warning: Failed to unmount /sys" >&2; }
         [ $mounted_proc -eq 1 ] && { umount -l "$ROOTFS_DIR/proc" || echo "Warning: Failed to unmount /proc" >&2; }
+        [ $mounted_dev -eq 1 ] && { umount -l "$ROOTFS_DIR/dev/pts" || echo "Warning: Failed to unmount /dev/pts" >&2; }
+        [ $mounted_dev -eq 1 ] && { umount -l "$ROOTFS_DIR/dev/shm" || echo "Warning: Failed to unmount /dev/shm" >&2; }
         [ $mounted_dev -eq 1 ] && { umount -l "$ROOTFS_DIR/dev" || echo "Warning: Failed to unmount /dev" >&2; }
         return $cleanup_exit_code
     }
@@ -74,8 +76,16 @@ build::chroot() {
     trap '_cleanup_mounts' EXIT
     
     # Mount essential filesystems
-    if ! mount --rbind /dev "$ROOTFS_DIR/dev"; then
+    if ! mount --bind /dev "$ROOTFS_DIR/dev"; then
         echo "Error: Failed to mount /dev" >&2
+        return 1
+    fi
+    if ! mount --bind /dev/pts "$ROOTFS_DIR/dev/pts"; then
+        echo "Error: Failed to mount /dev/pts" >&2
+        return 1
+    fi
+    if ! mount --bind /dev/shm "$ROOTFS_DIR/dev/shm"; then
+        echo "Error: Failed to mount /dev/shm" >&2
         return 1
     fi
     mounted_dev=1
