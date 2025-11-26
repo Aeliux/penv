@@ -113,10 +113,6 @@ build::chroot() {
     trap - EXIT
     _cleanup_mounts
     
-    if [ $exit_code -ne 0 ]; then
-        echo "Error: Command in chroot failed with exit code $exit_code" >&2
-    fi
-
     return $exit_code
 }
 
@@ -287,8 +283,9 @@ build::finalize() {
     
     export PENV_BUILD_STAGE="test"
     # error if exit code is 2 (test failures)
-    if ! build::chroot; then
-        echo "Warning: Test script failed" >&2
+    if build::chroot || [ $? -eq 2 ]; then
+        echo "Error: Test script failed" >&2
+        return 1
     fi
     unset PENV_BUILD_STAGE
 }
