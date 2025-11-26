@@ -274,5 +274,11 @@ build::finalize() {
         echo "Error: Cleanup script failed" >&2
         return 1
     fi
+    
+    export PENV_BUILD_STAGE="test"
+    if ! build::chroot; then
+        echo "Error: Test script failed" >&2
+        return 1
+    fi
     unset PENV_BUILD_STAGE
 }

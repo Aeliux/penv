@@ -10,8 +10,11 @@ VERBOSE=${PENV_CONFIG_VERBOSE:-0}
 
 # Set command flags based on verbosity
 if [ $VERBOSE -eq 1 ]; then
-    RM_FLAGS="-rfv"
-    FIND_DELETE_FLAGS="-print -delete"
+    # RM_FLAGS="-rfv"
+    # FIND_DELETE_FLAGS="-print -delete"
+
+    RM_FLAGS="-rf"
+    FIND_DELETE_FLAGS="-delete"
 else
     RM_FLAGS="-rf"
     FIND_DELETE_FLAGS="-delete"

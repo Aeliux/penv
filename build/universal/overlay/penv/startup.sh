@@ -102,6 +102,11 @@ if [ "$PENV_ENV_MODE" = "build" ] && [ "$PENV_BUILD_STAGE" = "patch" ] && [ -d /
     done
 fi
 
+if [ "$PENV_ENV_MODE" = "build" ] && [ "$PENV_BUILD_STAGE" = "test" ] && [ -x /penv/test.sh ]; then
+    [ "$PENV_CONFIG_VERBOSE" -ge 1 ] && echo "Running tests"
+    /penv/test.sh
+fi
+
 # Exit early for build modes
 case "$PENV_ENV_MODE" in
     prepare|build)

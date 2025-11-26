@@ -12,7 +12,7 @@ fi
 # Read list of optional commands from /penv/test.d/optional.d/
 if [ -d /penv/test.d/optional.d/ ]; then
   for f in /penv/test.d/optional.d/*; do
-    [ -f "$f" ] && commands="$commands$(sed 's/^/:/' "$f")"$'\n'
+    [ -f "$f" ] && commands=':'$'\n'"$commands$(cat "$f")"$'\n'
   done
 fi
 
