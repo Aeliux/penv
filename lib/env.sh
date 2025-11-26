@@ -103,32 +103,14 @@ env::shell(){
   
   if [[ ! -d "$env_root" ]]; then
     err "Environment not found: $env_name"
-    info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
   fi
   
-  # Sanity check: verify environment has basic structure
-  if [[ ! -d "$env_root/bin" ]] && [[ ! -d "$env_root/usr" ]]; then
-    err "Environment appears corrupted (missing /bin and /usr directories)"
-    info "Recreate it: ${C_BOLD}penv delete $env_name && penv create $env_name <distro>${C_RESET}"
-    return 1
-  fi
-  
   require_proot
-  header "Entering environment: $env_name"
-  echo -e "  ${C_DIM}rootfs: $env_root${C_RESET}"
-  if [[ $EUID -eq 0 ]]; then
-    echo -e "  ${C_DIM}mode: chroot (running as root)${C_RESET}"
-  else
-    echo -e "  ${C_DIM}mode: proot${C_RESET}"
-  fi
-  echo
 
   export PENV_ENV_MODE="environment"
   export PENV_ENV_NAME="$env_name"
   
-  # Pass command to exec_in_proot (empty array if no args)
-  # exec_in_proot will handle shell detection
   exec_in_proot "$env_root" "$@"
 }
 

@@ -341,7 +341,6 @@ launch_shell(){
   info "Type 'exit' when done to return and continue..."
   echo
   
-  # exec_in_proot will detect the best shell automatically
   exec_in_proot "$rootfs"
 }
 
