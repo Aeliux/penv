@@ -13,7 +13,7 @@ cleanup() {
         done
     fi
 
-    if [ "$PENV_ENV_MODE" = "build" ] && [ "$PENV_BUILD_STAGE" != "cleanup" ]; then
+    if [ "$PENV_ENV_MODE" = "build" ] && [ "$PENV_BUILD_STAGE" != "cleanup" ] && [ "$PENV_BUILD_STAGE" != "test" ]; then
         return 0
     fi
 
