@@ -81,7 +81,9 @@ mkdir -p "$(dirname "$ROOTFS_DIR")"
 
 # Bootstrap rootfs
 echo "Running debootstrap..."
-debootstrap $DEBOOTSTRAP_OPTS --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || {
+cache_dir="/var/cache/penv/$DISTRO/$DISTRO_RELEASE"
+mkdir -p "$cache_dir"
+debootstrap $DEBOOTSTRAP_OPTS --cache-dir="$cache_dir" --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || {
     echo "Error: debootstrap failed" >&2
     exit 1
 }
