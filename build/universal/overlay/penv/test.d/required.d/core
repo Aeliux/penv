@@ -114,10 +114,9 @@ false
 # Basic archive compression utilities (bzip2/xz often included or expected)
 bzip2
 xz
-# Editors
-vi
+# Text editors
 nano
-vim
+ed
 # Network utilities
 ping
 ping6

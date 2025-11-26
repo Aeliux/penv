@@ -72,3 +72,6 @@ dig
 nslookup
 # Binary analysis
 readelf
+# Vi/Vim text editor
+vi
+vim

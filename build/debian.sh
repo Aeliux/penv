@@ -19,7 +19,7 @@ readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-rootfs}"
 OUTPUT_FILE="${OUTPUT_FILE:-}"
 MIRROR="${MIRROR:-}"
 
-ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,iputils-ping,nano,vim,xz-utils,bzip2,zip,unzip,${ADDITIONAL_PACKAGES:-}"
+ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,iputils-ping,nano,ed,xz-utils,bzip2,zip,unzip,${ADDITIONAL_PACKAGES:-}"
 
 # Distro configuration map
 case "$DISTRO" in
