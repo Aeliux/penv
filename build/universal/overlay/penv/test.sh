@@ -29,8 +29,9 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_SKIPPED=0
 
-# Failed tests tracking
+# tests tracking
 FAILED_TESTS=""
+SKIPPED_TESTS=""
 
 # Test result functions
 test_start() {
@@ -62,6 +63,7 @@ test_skip() {
     if [ -n "$reason" ]; then
         echo "${C_YELLOW}       └─ $reason${C_RESET}"
     fi
+    SKIPPED_TESTS="${SKIPPED_TESTS}${CURRENT_TEST}: ${reason}\n"
 }
 
 # Helper to run a test command
@@ -134,10 +136,9 @@ print_summary() {
     
     if [ $TESTS_FAILED -gt 0 ] || [ $TESTS_SKIPPED -gt 0 ]; then
         if [ $TESTS_SKIPPED -gt 0 ]; then
-            echo "${C_BOLD}${C_YELLOW}SKIPPED TESTS (optional features):${C_RESET}"
+            echo "${C_BOLD}${C_YELLOW}SKIPPED TESTS:${C_RESET}"
             echo "${C_YELLOW}----------------------------------------${C_RESET}"
-            echo "${C_YELLOW}$TESTS_SKIPPED tests were skipped due to optional features${C_RESET}"
-            echo "${C_YELLOW}not being available (this is usually expected)${C_RESET}"
+            printf "${C_YELLOW}%b${C_RESET}" "$SKIPPED_TESTS"
             echo "${C_YELLOW}----------------------------------------${C_RESET}"
             echo ""
         fi
@@ -148,13 +149,22 @@ print_summary() {
             printf "${C_RED}%b${C_RESET}" "$FAILED_TESTS"
             echo "${C_RED}----------------------------------------${C_RESET}"
             echo ""
-            return 1
         fi
     fi
     
-    echo "${C_BOLD}${C_GREEN}ALL TESTS PASSED!${C_RESET}"
-    echo ""
-    return 0
+    if [ $TESTS_FAILED -gt 0 ]; then
+        echo "${C_BOLD}${C_RED}SOME TESTS FAILED!${C_RESET}"
+        echo ""
+        return 1
+    elif [ $TESTS_SKIPPED -gt 0 ]; then
+        echo "${C_BOLD}${C_YELLOW}SOME TESTS WERE SKIPPED!${C_RESET}"
+        echo ""
+        return 0
+    else
+        echo "${C_BOLD}${C_GREEN}ALL TESTS PASSED!${C_RESET}"
+        echo ""
+        return 0
+    fi
 }
 
 # Main test execution
