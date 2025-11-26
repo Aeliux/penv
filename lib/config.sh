@@ -5,7 +5,7 @@
 PENV_DIR="${HOME}/.penv"
 CACHE_DIR="${PENV_DIR}/cache"
 ENVS_DIR="${PENV_DIR}/envs"
-BIN_DIR="${HOME}/bin"
+BIN_DIR="${PENV_DIR}/bin"
 LOCAL_INDEX="${PENV_DIR}/local_index.json"
 
 # Remote index URL - change this to use a different index
@@ -17,7 +17,7 @@ case "$ARCH" in
   x86_64) ARCH="amd64" ;;
   aarch64|arm64) ARCH="arm64" ;;
   armv7l) ARCH="armv7" ;;
-  i686|i386) ARCH="i386" ;;
+  i686) ARCH="i386" ;;
 esac
 
 # -------- Color codes --------

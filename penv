@@ -21,6 +21,9 @@ source "$LIB_DIR/distro.sh"
 source "$LIB_DIR/env.sh"
 source "$LIB_DIR/commands.sh"
 
+# Add BIN_DIR to PATH
+export PATH="$BIN_DIR:$PATH"
+
 # -------- Main dispatch --------
 if (( $# < 1 )); then
   cmd::usage

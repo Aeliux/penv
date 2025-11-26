@@ -19,14 +19,13 @@ cmd::init(){
     msg "Downloader: $DL_TOOL"
   fi
   if ! command -v proot >/dev/null 2>&1; then
-    warn "proot not found. Install it:"
-    echo -e "    ${C_DIM}sudo apt update && sudo apt install -y proot${C_RESET}"
+    info "proot not found. Compiling proot from source..."
+    INSTALL_DIR="$BIN_DIR" "${SCRIPT_DIR}/build-proot.sh"
   else
     msg "proot: $(command -v proot)"
   fi
   if ! command -v jq >/dev/null 2>&1; then
-    warn "jq not found (required for index). Install it:"
-    echo -e "    ${C_DIM}sudo apt update && sudo apt install -y jq${C_RESET}"
+    warn "jq not found"
   else
     msg "jq: $(command -v jq)"
   fi
