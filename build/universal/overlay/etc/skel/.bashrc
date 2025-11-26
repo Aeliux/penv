@@ -67,21 +67,22 @@ else
     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
 fi
 
+
 # penv custom prompt - only if mode is not unknown
 if [ "$PENV_ENV_MODE" != "unknown" ]; then
     if [ "$PENV_ENV_MODE" = "mod" ]; then
         # Simplified prompt for mod mode
         if [ "$color_prompt" = yes ]; then
-            PS1='(\[\033[01;32m\]mod\[\033[00m\]) \[\033[01;34m\]\w\[\033[00m\]# '
+            PROMPT_COMMAND='if [ $? -eq 0 ]; then COLOR="\[\033[00m\]"; else COLOR="\033[01;31m"; fi; PS1="(\[\033[01;32m\]mod\[\033[00m\]) \[\033[01;34m\]\w\[\033[00m\]\[${COLOR}\]#\[\033[00m\] "'
         else
-            PS1='(mod) \w# '
+            PROMPT_COMMAND='PS1="(mod) \w# "'
         fi
     else
         # Full prompt for other modes
         if [ "$color_prompt" = yes ]; then
-            PS1='(\[\033[01;36m\]${PENV_ENV_NAME}\[\033[00m\]@\[\033[01;32m\]${PENV_ENV_DISTRO}\[\033[00m\]) \[\033[01;34m\]\w\[\033[00m\]# '
+            PROMPT_COMMAND='if [ $? -eq 0 ]; then COLOR="\[\033[00m\]"; else COLOR="\033[01;31m"; fi; PS1="(\[\033[01;36m\]${PENV_ENV_NAME}\[\033[00m\]@\[\033[01;32m\]${PENV_ENV_DISTRO}\[\033[00m\]) \[\033[01;34m\]\w\[\033[00m\]\[${COLOR}\]#\[\033[00m\] "'
         else
-            PS1='(${PENV_ENV_NAME}@${PENV_ENV_DISTRO}) \w# '
+            PROMPT_COMMAND='PS1="(${PENV_ENV_NAME}@${PENV_ENV_DISTRO}) \w# "'
         fi
     fi
 fi
