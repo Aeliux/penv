@@ -74,6 +74,9 @@ sha256sum
 test
 # Create/remove device files, special files
 mknod
+# Zip Archive/extract utilities
+unzip
+zip
 # Utilities for handling compressed streams (gzip family)
 gzip
 gunzip
@@ -111,9 +114,10 @@ false
 # Basic archive compression utilities (bzip2/xz often included or expected)
 bzip2
 xz
-# Editors: many distros include at least a tiny vi or ed
+# Editors
 vi
 nano
+vim
 # Network utilities
 ping
 ping6

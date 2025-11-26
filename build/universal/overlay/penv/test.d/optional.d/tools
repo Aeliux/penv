@@ -14,14 +14,6 @@ netstat
 git
 # Rsync for syncing files
 rsync
-# Archive/extract utilities
-unzip
-zip
-p7zip
-# Compression utils not in all minimal images
-xz-utils
-# Edtor
-vim
 # Build and compilation toolchain (developers usually install these)
 make
 # C compiler front-end
@@ -60,8 +52,6 @@ nmap
 tcpdump
 # Netcat utilities
 nc
-# Locale packages (may be large — optional to include)
-locale
 # Container/namespace tools (useful in development)
 nsenter
 unshare

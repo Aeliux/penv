@@ -19,6 +19,8 @@ readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-rootfs}"
 OUTPUT_FILE="${OUTPUT_FILE:-}"
 MIRROR="${MIRROR:-}"
 
+ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,iputils-ping,nano,vim,xz-utils,bzip2,zip,unzip,${ADDITIONAL_PACKAGES:-}"
+
 # Distro configuration map
 case "$DISTRO" in
     debian)
@@ -83,10 +85,12 @@ mkdir -p "$(dirname "$ROOTFS_DIR")"
 echo "Running debootstrap..."
 cache_dir="/var/cache/penv/$DISTRO/$DISTRO_RELEASE"
 mkdir -p "$cache_dir"
-debootstrap $DEBOOTSTRAP_OPTS --cache-dir="$cache_dir" --verbose "$DISTRO_RELEASE" "$ROOTFS_DIR" "$MIRROR" || {
-    echo "Error: debootstrap failed" >&2
-    exit 1
-}
+debootstrap $DEBOOTSTRAP_OPTS \
+    --include="$ADDITIONAL_PACKAGES" \
+    --cache-dir="$cache_dir" \
+    --verbose "$DISTRO_RELEASE" \
+    "$ROOTFS_DIR" \
+    "$MIRROR"
 
 # Setup and finalize
 build::setup || { echo "Error: build::setup failed" >&2; exit 1; }
