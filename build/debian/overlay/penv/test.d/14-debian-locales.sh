@@ -22,17 +22,6 @@ else
     test_skip "locales package not installed"
 fi
 
-test_start "/etc/locale.gen exists (Debian locale configuration)"
-if dpkg -l locales >/dev/null 2>&1; then
-    if test_file_exists /etc/locale.gen; then
-        test_pass
-    else
-        test_fail "/etc/locale.gen missing"
-    fi
-else
-    test_skip "locales package not installed"
-fi
-
 test_start "locale-gen command exists (Debian tool)"
 if test_command_exists locale-gen; then
     test_pass

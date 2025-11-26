@@ -39,7 +39,6 @@ mkdir -p /var/lib/dbus
 # Set default locale
 cat > /etc/default/locale <<EOF
 LANG=C.UTF-8
-LC_ALL=C.UTF-8
 EOF
 
 # Set up passwd and group if they don't exist or are broken
@@ -78,6 +77,3 @@ fi
 if [ ! -e /etc/mtab ]; then
     ln -sf /proc/mounts /etc/mtab
 fi
-
-# Fix systemd detection issues
-mkdir -p /run/systemd 2>/dev/null || true

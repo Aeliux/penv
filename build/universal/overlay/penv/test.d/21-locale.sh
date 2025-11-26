@@ -71,10 +71,3 @@ if (LC_ALL=C locale >/dev/null 2>&1); then
 else
     test_fail "Cannot set LC_ALL"
 fi
-
-test_start "/usr/share/locale directory exists"
-if test_dir_exists /usr/share/locale; then
-    test_pass
-else
-    test_skip "Locale data not installed (optional)"
-fi

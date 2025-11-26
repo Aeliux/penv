@@ -70,9 +70,6 @@ done
 # Set standard environment
 export HOME="/root"
 export USER="root"
-export SHELL=${SHELL:-/bin/bash}
-export LANG=${LANG:-C.UTF-8}
-export LC_ALL=${LC_ALL:-C.UTF-8}
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 export SYSTEMD_OFFLINE=1
 

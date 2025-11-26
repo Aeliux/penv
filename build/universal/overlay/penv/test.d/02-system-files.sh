@@ -82,3 +82,10 @@ if test_file_exists /etc/profile; then
 else
     test_skip "No /etc/profile (optional)"
 fi
+
+test_start "/etc/os-release exists"
+if test_file_exists /etc/os-release; then
+    test_pass
+else
+    test_fail "/etc/os-release missing"
+fi
