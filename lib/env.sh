@@ -90,7 +90,6 @@ env::shell(){
   
   if [[ -z "$env_name" ]]; then
     err "Usage: penv shell <name> [command...]"
-    info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
   fi
   

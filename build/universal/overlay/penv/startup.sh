@@ -2,7 +2,7 @@
 set -e
 
 # /penv/startup.sh
-# This script sets up the runtime environment and launches a shell
+# This script sets up the runtime environment and launches a shell or executes a command
 
 # Cleanup function
 cleanup() {
@@ -27,36 +27,6 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-# Set default PENV variables
-export PENV_ENV_NAME=${PENV_ENV_NAME:-unknown}
-export PENV_ENV_MODE=${PENV_ENV_MODE:-unknown}
-export PENV_ENV_DISTRO=${PENV_ENV_DISTRO:-unknown}
-export PENV_BUILD_STAGE=${PENV_BUILD_STAGE:-unknown}
-export PENV_CONFIG_VERBOSE=${PENV_CONFIG_VERBOSE:-0}
-
-# Set up runtime signal directory
-export PENV_SIGNAL="/tmp/penv/signals/$$"
-rm -rf "$PENV_SIGNAL"
-mkdir -p "$PENV_SIGNAL"
-
-# Load metadata
-if [ -f /penv/metadata.sh ]; then
-    . /penv/metadata.sh
-    
-    export PENV_VERSION
-    export PENV_METADATA_FAMILY
-    export PENV_METADATA_DISTRO
-    export PENV_METADATA_TIMESTAMP
-    
-    export PENV_ENV_VERSION="$PENV_VERSION"
-    export PENV_ENV_DISTRO="$PENV_METADATA_DISTRO"
-    export PENV_ENV_FAMILY="$PENV_METADATA_FAMILY"
-    export PENV_ENV_TIMESTAMP="$PENV_METADATA_TIMESTAMP"
-else
-    echo Corrupted environment: missing /penv/metadata.sh >&2
-    exit 1
-fi
-
 # Unset host environment variables (keep PENV_* and safe variables)
 for var in $(env | cut -d= -f1); do
     case "$var" in
@@ -67,11 +37,13 @@ for var in $(env | cut -d= -f1); do
     esac
 done
 
-# Set standard environment
-export HOME="/root"
-export USER="root"
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-export SYSTEMD_OFFLINE=1
+# Load core environment
+if [ -f /penv/core.sh ]; then
+    . /penv/core.sh
+else
+    echo "Error: Corrupted environment: missing /penv/core.sh" >&2
+    exit 1
+fi
 
 # Ensure home directory exists with proper structure
 if [ ! -d "$HOME" ]; then
@@ -110,7 +82,12 @@ case "$PENV_ENV_MODE" in
         exit 0 ;;
 esac
 
-# Launch shell
+# Launch shell or execute command
+if [ "$#" -gt 0 ]; then
+    "$@"
+    exit $?
+fi
+
 for shell in /bin/bash /usr/bin/bash /bin/sh /usr/bin/sh; do
     if [ -x "$shell" ]; then
         export SHELL="$shell"

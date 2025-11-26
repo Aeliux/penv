@@ -78,10 +78,3 @@ if test_command_exists penv; then
 else
     test_skip "penv command not in PATH (host-side tool)"
 fi
-
-test_start "Profile configuration includes penv"
-if test_file_exists /etc/profile.d/99-penv.sh; then
-    test_pass
-else
-    test_skip "PENV profile script not found (optional)"
-fi

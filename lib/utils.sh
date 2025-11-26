@@ -250,14 +250,6 @@ extract_tarball(){
 setup_proot_env(){
   local rootfs="$1"
 
-  local penv_version
-  penv_version=$(cat "$rootfs/penv/metadata/version" 2>/dev/null || echo "unknown")
-
-  # Show penv version if available
-  if [[ "$penv_version" != "unknown" ]]; then
-    info "Detected penv version: $penv_version"
-  fi
-  
   info "Setting up environment..."
 
   # Ensure essential directories exist (device files removed at build time)
@@ -279,7 +271,7 @@ setup_proot_env(){
   fi
 
   # Run any version-specific proot setup here if needed
-  if requires_version "$penv_version" "2" && [[ "$PENV_ENV_MODE" = "prepare" ]]; then
+  if requires_version "$rootfs" "2" && [[ "$PENV_ENV_MODE" = "prepare" ]]; then
     info "Preparing penv v2+ environment..."
     exec_in_proot "$rootfs"
   fi
@@ -290,15 +282,15 @@ setup_proot_env(){
 }
 
 requires_version() {
-    local PENV_VERSION="$1"
+    local penv_version=$(cat "$rootfs/penv/metadata/version" 2>/dev/null || echo "unknown")
     local required_version="$2"
 
-    if [ "$PENV_VERSION" = "$required_version" ]; then
+    if [ "$penv_version" = "$required_version" ]; then
         return 0
     else
         # compare versions
         local IFS=.
-        local i ver1=($PENV_VERSION) ver2=($required_version)
+        local i ver1=($penv_version) ver2=($required_version)
         # fill empty fields in ver1 with zeros
         for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
             ver1[i]=0
@@ -355,11 +347,15 @@ exec_in_proot(){
     return 1
   fi
   
+  if [[ -f "$rootfs/penv/startup.sh" ]]; then
+      startup=(/bin/sh -- /penv/startup.sh)
+  fi
+
   # If no command provided, detect best default
   if [[ ${#cmd[@]} -eq 0 ]]; then
     # Priority 1: Use startup script if available
-    if [[ -f "$rootfs/penv/startup.sh" ]]; then
-      cmd=(/bin/sh /penv/startup.sh)
+    if [[ -n "${startup[*]}" ]]; then
+      cmd=("${startup[@]}")
     else
       # Priority 2: Find available shell
       local shell_path
@@ -371,6 +367,11 @@ exec_in_proot(){
         return 1
       fi
     fi
+  elif [[ -n "${startup[*]}" ]]; then
+      if requires_version "$rootfs" "2"; then
+          # Prepend startup script for penv v2+
+          cmd=("${startup[@]}" "${cmd[@]}")
+      fi
   fi
   
   # Check if running as root (UID 0)
