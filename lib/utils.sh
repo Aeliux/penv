@@ -423,9 +423,9 @@ exec_in_proot(){
     local exit_code=$?
     
     # Cleanup mounts
-    umount -l "$rootfs/dev" || true
     umount -l "$rootfs/dev/pts" || true
     umount -l "$rootfs/dev/shm" || true
+    umount -l "$rootfs/dev" || true
     umount -l "$rootfs/proc" || true
     umount -l "$rootfs/sys" || true
     umount -l "$rootfs/mnt" 2>/dev/null || true
