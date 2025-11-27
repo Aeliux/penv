@@ -282,31 +282,54 @@ setup_proot_env(){
 }
 
 requires_version() {
-    local penv_version=$(cat "$rootfs/penv/metadata/version" 2>/dev/null || echo "unknown")
+    local penv_version=$(get_penv_version "$1")
     local required_version="$2"
 
-    if [ "$penv_version" = "$required_version" ]; then
+    local cmp_result=0
+    compare_versions "$penv_version" "$required_version" || cmp_result=$?
+    if [[ $cmp_result -eq 1 || $cmp_result -eq 0 ]]; then
         return 0
     else
-        # compare versions
-        local IFS=.
-        local i ver1=($penv_version) ver2=($required_version)
-        # fill empty fields in ver1 with zeros
-        for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
-            ver1[i]=0
-        done
-        for ((i=0; i<${#ver1[@]}; i++)); do
-            if [ -z "${ver2[i]}" ]; then
-                ver2[i]=0
-            fi
-            if ((10#${ver1[i]} < 10#${ver2[i]})); then
-                return 1
-            elif ((10#${ver1[i]} > 10#${ver2[i]})); then
-                return 0
-            fi
-        done
-        return 0
+        return 1
     fi
+}
+
+get_penv_version() {
+    local rootfs="$1"
+    local version_file="$rootfs/penv/metadata/version"
+
+    if [[ -f "$version_file" ]]; then
+        cat "$version_file"
+    else
+        echo "0"
+    fi
+}
+
+compare_versions() {
+    local ver1=(${1//./ })
+    local ver2=(${2//./ })
+    local len=$(( ${#ver1[@]} > ${#ver2[@]} ? ${#ver1[@]} : ${#ver2[@]} ))
+
+    for ((i=0; i<len; i++)); do
+        local v1="${ver1[i]:-0}"
+        local v2="${ver2[i]:-0}"
+
+        # Remove any spaces (defensive)
+        v1="${v1//[[:space:]]/}"
+        v2="${v2//[[:space:]]/}"
+
+        # If not a number, default to 0
+        [[ "$v1" =~ ^[0-9]+$ ]] || v1=0
+        [[ "$v2" =~ ^[0-9]+$ ]] || v2=0
+
+        if ((10#$v1 > 10#$v2)); then
+            return 1
+        elif ((10#$v1 < 10#$v2)); then
+            return 2
+        fi
+    done
+
+    return 0
 }
 
 # Find available shell in rootfs
@@ -345,6 +368,14 @@ exec_in_proot(){
   if [[ ! -d "$rootfs" ]]; then
     err "Root filesystem not found: $rootfs"
     return 1
+  fi
+
+  local compare_result=0
+  compare_versions "$CLIENT_VERSION" "$(get_penv_version "$rootfs")" || compare_result=$?
+  if [[ $compare_result -eq 2 ]]; then
+      warn "Warning: penv client version ($CLIENT_VERSION) is older than environment version ($(get_penv_version "$rootfs"))"
+      warn "Some features may not work as expected. Consider updating penv."
+      echo
   fi
   
   if [[ -f "$rootfs/penv/startup.sh" ]]; then

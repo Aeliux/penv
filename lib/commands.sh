@@ -3,20 +3,24 @@
 
 # Namespace: cmd::
 
+cmd::version(){
+  echo "$CLIENT_VERSION"
+}
+
 cmd::init(){
   ensure_dirs
-  header "penv initialized successfully!"
-  echo -e "  ${C_CYAN}Cache:${C_RESET}      $CACHE_DIR"
-  echo -e "  ${C_CYAN}Envs:${C_RESET}       $ENVS_DIR"
-  echo -e "  ${C_CYAN}Index URL:${C_RESET}  $INDEX_URL"
+  echo -e "${C_CYAN}Cache:${C_RESET}      $CACHE_DIR"
+  echo -e "${C_CYAN}Envs:${C_RESET}       $ENVS_DIR"
+  echo -e "${C_CYAN}Index URL:${C_RESET}  $INDEX_URL"
   echo
   if [[ -z "$DL_TOOL" ]]; then
-    warn "No download tool found. Install one of:"
-    echo -e "    ${C_DIM}• aria2c (recommended)${C_RESET}"
+    error "No download tool found. Install one of:"
+    echo -e "    ${C_DIM}• aria2c${C_RESET}"
     echo -e "    ${C_DIM}• curl${C_RESET}"
     echo -e "    ${C_DIM}• wget${C_RESET}"
+    exit 1
   else
-    msg "Downloader: $DL_TOOL"
+    msg "Downloader: $(which $DL_TOOL)"
   fi
   if ! command -v proot >/dev/null 2>&1; then
     info "proot not found. Compiling proot from source..."
@@ -25,11 +29,13 @@ cmd::init(){
     msg "proot: $(command -v proot)"
   fi
   if ! command -v jq >/dev/null 2>&1; then
-    warn "jq not found"
+    error "jq not found"
+    exit 1
   else
     msg "jq: $(command -v jq)"
   fi
   echo
+  info "penv $CLIENT_VERSION is ready to use!"
 }
 
 cmd::import(){
@@ -341,6 +347,7 @@ cmd::usage(){
   echo -e "${C_BOLD}${C_MAGENTA}penv${C_RESET} - proot environment manager"
   echo
   echo -e "${C_BOLD}USAGE:${C_RESET}"
+  echo -e "  ${C_GREEN}penv version${C_RESET}                           Show penv version"
   echo -e "  ${C_GREEN}penv init${C_RESET}                           Initialize penv"
   echo -e "  ${C_GREEN}penv get${C_RESET} ${C_YELLOW}<id>${C_RESET}                      Download a distro"
   echo -e "    ${C_DIM}Options:${C_RESET}"
@@ -371,23 +378,23 @@ cmd::usage(){
   echo
   echo -e "${C_BOLD}EXAMPLES:${C_RESET}"
   echo "  # Get a distro"
-  echo "  penv get ubuntu-24.04-vanilla"
-  echo "  penv get ubuntu-24.04-vanilla -n ubuntu"
+  echo "  penv get ubuntu"
+  echo "  penv get ubuntu-24.04 -n my-ubuntu"
   echo
   echo "  # Import a custom rootfs"
   echo "  penv import my-custom /path/to/rootfs.tar.gz"
   echo "  penv import my-alpine rootfs.tar.gz -f alpine"
   echo
   echo "  # Modify distro with addons"
-  echo "  penv mod ubuntu-24.04-vanilla -a nodejs -a python -n ubuntu-dev"
+  echo "  penv mod ubuntu-24.04 -a nodejs -a python -n ubuntu-dev"
   echo "  penv mod my-custom -a build-tools -n my-custom-dev"
   echo
   echo "  # Modify with shell (manual changes)"
-  echo "  penv mod ubuntu-24.04-vanilla -s -n ubuntu-custom"
+  echo "  penv mod ubuntu-24.04 -s -n ubuntu-custom"
   echo "  penv mod ubuntu-dev -a python -s -n ubuntu-dev-plus  # addons + shell"
   echo
   echo "  # Create and use environment"
-  echo "  penv new myenv ubuntu-24.04-vanilla"
+  echo "  penv new myenv ubuntu-24.04"
   echo "  penv shell myenv"
   echo "  penv shell myenv python3 --version"
   echo
@@ -398,19 +405,9 @@ cmd::usage(){
   echo "  penv rm -d -a            # remove all distros"
   echo
   echo "  # List everything"
-  echo "  penv list -o -e -d       # online, envs, and downloaded"
+  echo "  penv list -o -e -d       # online, envs, and distros"
   echo "  penv list -o -a          # online distros and addons"
   echo
   echo -e "${C_BOLD}ENVIRONMENT:${C_RESET}"
   echo -e "  ${C_DIM}PENV_INDEX_URL${C_RESET}  Custom index URL (default: GitHub)"
-  echo
-  echo -e "${C_BOLD}NOTES:${C_RESET}"
-  echo -e "  ${C_DIM}• Use 'mod' to apply addons to any distro (downloaded or imported)${C_RESET}"
-  echo -e "  ${C_DIM}• Addons are distro-specific or universal${C_RESET}"
-  echo -e "  ${C_DIM}• Addons are architecture-aware${C_RESET}"
-  echo
-  echo -e "${C_BOLD}ALIASES:${C_RESET}"
-  echo -e "  ${C_DIM}new -> create, sh -> shell, ls -> list${C_RESET}"
-  echo -e "  ${C_DIM}dl/download -> get, modify -> mod${C_RESET}"
-  echo -e "  ${C_DIM}delete/remove -> rm${C_RESET}"
 }

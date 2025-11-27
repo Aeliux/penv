@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# penv - proot environment manager
+# penv - virtual environment manager
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -7,6 +7,8 @@ IFS=$'\n\t'
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
+
+CLIENT_VERSION="2.0"
 
 # Source configurations
 if [ -f "$SCRIPT_DIR/config.sh" ]; then
@@ -34,6 +36,9 @@ command="$1"
 shift
 
 case "$command" in
+  version|--version)
+    cmd::version
+    ;;
   init)
     cmd::init
     ;;
