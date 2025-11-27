@@ -56,9 +56,10 @@ EOF
 }
 
 build::install_binfmt(){
-    if [ -n "${WSL_DISTRO_NAME:-}" ]; then
-        echo "Error: Binfmt installation is not supported in WSL environments" >&2
-        return 1    
+    # Detect wsl using wslinfo
+    if command -v wslinfo >/dev/null 2>&1 && wslinfo --networking-mode; then
+        echo "Error: WSL detected. QEMU binfmt is not supported in WSL." >&2
+        return 1
     fi
 
     echo "Installing QEMU user static binaries and binfmt support..."

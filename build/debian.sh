@@ -54,11 +54,12 @@ else
     MIRRORS=("${DEFAULT_MIRRORS[@]}")
 fi
 
+readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/$$/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs}"
+
 # Source build library
 . build/core/build.sh
 
 readonly PACKAGE_VERSION="${PENV_VERSION}"
-readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs}"
 readonly OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
 
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."
