@@ -9,16 +9,17 @@ cmd::version(){
 
 cmd::init(){
   ensure_dirs
+  index::init_local
   echo -e "${C_CYAN}Cache:${C_RESET}      $CACHE_DIR"
   echo -e "${C_CYAN}Envs:${C_RESET}       $ENVS_DIR"
   echo -e "${C_CYAN}Index URL:${C_RESET}  $INDEX_URL"
   echo
   if [[ -z "$DL_TOOL" ]]; then
-    error "No download tool found. Install one of:"
+    err "No download tool found. Install one of:"
     echo -e "    ${C_DIM}• aria2c${C_RESET}"
     echo -e "    ${C_DIM}• curl${C_RESET}"
     echo -e "    ${C_DIM}• wget${C_RESET}"
-    exit 1
+    return 1
   else
     msg "Downloader: $(which $DL_TOOL)"
   fi
@@ -29,8 +30,8 @@ cmd::init(){
     msg "proot: $(command -v proot)"
   fi
   if ! command -v jq >/dev/null 2>&1; then
-    error "jq not found"
-    exit 1
+    err "jq not found"
+    return 1
   else
     msg "jq: $(command -v jq)"
   fi
@@ -207,7 +208,7 @@ cmd::get(){
 
 cmd::create(){
   if [[ $# -eq 1 ]] && [[ "$1" == "-l" || "$1" == "--list" ]]; then
-    distro::list_downloaded
+    distro::list_distro
     return 0
   fi
   
@@ -333,7 +334,7 @@ cmd::list(){
   fi
   
   if $show_downloaded; then
-    distro::list_downloaded
+    distro::list_distro
   fi
   
   if $show_envs; then
@@ -363,7 +364,7 @@ cmd::usage(){
   echo -e "      ${C_DIM}-n, --name <name>${C_RESET}           Save as new distro ID ${C_DIM}(required)${C_RESET}"
   echo -e "  ${C_GREEN}penv new${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}<distro-id>${C_RESET}      Create new environment"
   echo -e "    ${C_DIM}Options:${C_RESET}"
-  echo -e "      ${C_DIM}-l, --list${C_RESET}                  List downloaded distros"
+  echo -e "      ${C_DIM}-l, --list${C_RESET}                  List installed distros"
   echo -e "  ${C_GREEN}penv shell${C_RESET} ${C_YELLOW}<name>${C_RESET} ${C_YELLOW}[cmd]${C_RESET}           Enter environment shell or run command"
   echo -e "  ${C_GREEN}penv rm${C_RESET} ${C_YELLOW}<name>${C_RESET}                     Remove environment"
   echo -e "  ${C_GREEN}penv rm -d${C_RESET} ${C_YELLOW}<id>${C_RESET}                   Remove distro"
@@ -373,7 +374,7 @@ cmd::usage(){
   echo -e "    ${C_DIM}Options (combine multiple):${C_RESET}"
   echo -e "      ${C_DIM}-o, --online${C_RESET}                List online distros"
   echo -e "      ${C_DIM}-e, --envs${C_RESET}                  List environments ${C_DIM}(default)${C_RESET}"
-  echo -e "      ${C_DIM}-d, --downloaded${C_RESET}            List downloaded distros"
+  echo -e "      ${C_DIM}-d, --downloaded${C_RESET}            List installed distros"
   echo -e "      ${C_DIM}-a, --addons${C_RESET}                List available addons ${C_DIM}(with -o)${C_RESET}"
   echo
   echo -e "${C_BOLD}EXAMPLES:${C_RESET}"

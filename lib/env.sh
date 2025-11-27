@@ -52,8 +52,7 @@ env::create(){
   distro_file=$(index::get_local_path "$distro_id")
   
   if [[ -z "$distro_file" ]] || [[ ! -f "$distro_file" ]]; then
-    err "Distro not downloaded: $distro_id"
-    info "Download it first: ${C_BOLD}penv download $distro_id${C_RESET}"
+    err "Distro not found in local index: $distro_id"
     return 1
   fi
   

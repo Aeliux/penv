@@ -9,7 +9,6 @@ index::fetch_remote(){
   temp_index=$(mktemp)
   
   # Download silently without cache check
-  info "Fetching remote index..." >&2
   if ! download_file_nocache "$INDEX_URL" "$temp_index" >&2; then
     rm -f "$temp_index"
     err "Failed to fetch remote index" >&2
@@ -340,7 +339,6 @@ index::get_local_path(){
   distro_entry=$(jq -r ".distros[\"$distro_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
   
   if [[ -z "$distro_entry" || "$distro_entry" == "null" ]]; then
-    err "Distro not found in local index: $distro_id"
     return 1
   fi
   

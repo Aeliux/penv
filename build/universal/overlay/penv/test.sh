@@ -169,7 +169,7 @@ print_summary() {
 
 # Main test execution
 main() {
-    print_header "PENV Rootfs Test Suite"
+    print_header "penv rootfs Test Suite"
     
     # Display environment info
     echo "${C_CYAN}Environment Information:${C_RESET}"

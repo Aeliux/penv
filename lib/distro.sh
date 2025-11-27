@@ -153,9 +153,7 @@ distro::import(){
   
   echo
   msg "Successfully imported: ${C_BOLD}$distro_id${C_RESET}"
-  info "Size: $size"
-  info "File: $cache_file"
-  info "Create environment: ${C_BOLD}penv create <name> $distro_id${C_RESET}"
+  info "Create environment: ${C_BOLD}penv new <name> $distro_id${C_RESET}"
   echo
   
   return 0
@@ -175,7 +173,6 @@ distro::download(){
   
   if [[ -z "$distro_data" ]]; then
     err "Distro not found: $distro_id"
-    info "Use ${C_BOLD}penv list -o${C_RESET} to see available distros"
     return 1
   fi
   
@@ -203,7 +200,6 @@ distro::download(){
     exists=$(jq -r ".distros[\"$final_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
     if [[ -n "$exists" ]]; then
       err "Name already exists: $final_id"
-      info "Use a different name or remove existing: ${C_BOLD}penv rm -d $final_id${C_RESET}"
       return 1
     fi
   fi
@@ -241,32 +237,19 @@ distro::download(){
     index::store_downloaded "$actual_distro_id" "$base_cache_file" "" "[]" "base" "$distro_family"
     base_distro_file="$base_cache_file"
     
-    echo
     msg "Distro downloaded: ${C_BOLD}$actual_distro_id${C_RESET}"
-    info "File: $base_distro_file"
   else
     msg "Distro already cached: $actual_distro_id"
   fi
   
   # Handle alias creation
-  if [[ "$is_custom" == "true" ]]; then
+  if [[ "$final_id" != "$actual_distro_id" ]]; then
     # Alias: just store reference to base distro, no file duplication
     index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias" "$distro_family"
-    
-    msg "Alias created: ${C_BOLD}$final_id${C_RESET} → $actual_distro_id"
-    info "File: $base_distro_file (shared with base)"
-  else
-    # Simple base distro download (already done above if needed)
-    # If user used an alias name to download, store that alias too
-    if [[ "$final_id" != "$actual_distro_id" ]]; then
-      # User downloaded using an alias (e.g., ubuntu-vanilla)
-      # Store the alias so they can use that name later
-      index::store_downloaded "$final_id" "$base_distro_file" "$actual_distro_id" "[]" "alias" "$distro_family"
-      msg "Distro available: ${C_BOLD}$final_id${C_RESET} (alias of $actual_distro_id)"
-    fi
+    msg "Alias created: ${C_BOLD}$final_id${C_RESET}"
   fi
   
-  echo
+  info "Create environment: ${C_BOLD}penv new <name> $final_id${C_RESET}"
   return 0
 }
 
@@ -301,8 +284,7 @@ distro::modify(){
   source_file=$(index::get_local_path "$distro_id" || true)
   
   if [[ -z "$source_file" ]] || [[ ! -f "$source_file" ]]; then
-    err "Source distro not found in local cache: $distro_id"
-    info "Use ${C_BOLD}penv list -d${C_RESET} to see downloaded distros"
+    err "Source distro not found in local index: $distro_id"
     return 1
   fi
   
@@ -358,12 +340,6 @@ distro::modify(){
   
   echo
   msg "Modified distro created: ${C_BOLD}$new_id${C_RESET}"
-  if [[ ${#addons[@]} -gt 0 ]]; then
-    info "Base: $distro_id + addons: ${addons[*]}"
-  else
-    info "Base: $distro_id (manual modifications)"
-  fi
-  info "File: $output_file"
   info "Create environment: ${C_BOLD}penv new <name> $new_id${C_RESET}"
   echo
   
@@ -537,12 +513,12 @@ distro::shell_and_pack(){
   return 0
 }
 
-# List downloaded distros
-distro::list_downloaded(){
+# List distros
+distro::list_distro(){
   require_jq
   index::init_local
   
-  header "Downloaded Distributions"
+  header "Installed Distribution Images"
   
   local count
   count=$(jq -r '.distros | length' "$LOCAL_INDEX" 2>/dev/null)

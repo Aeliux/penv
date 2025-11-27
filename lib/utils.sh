@@ -6,7 +6,7 @@ msg(){ echo -e "${C_GREEN}[✓]${C_RESET} $*"; }
 info(){ echo -e "${C_CYAN}[i]${C_RESET} $*"; }
 warn(){ echo -e "${C_YELLOW}[!]${C_RESET} $*"; }
 err(){ echo -e "${C_RED}[ERROR]${C_RESET} $*" >&2; }
-header(){ echo -e "\n${C_BOLD}${C_CYAN}=== $* ===${C_RESET}"; }
+header(){ echo -e "${C_BOLD}${C_CYAN}$*${C_RESET}"; }
 
 ensure_dirs(){
   mkdir -p "$CACHE_DIR" "$ENVS_DIR" "$BIN_DIR" "$PENV_DIR"
@@ -148,7 +148,6 @@ download_file(){
     return 1
   fi
   
-  echo
   msg "Download complete: $(basename "$out")"
   return 0
 }
