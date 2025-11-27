@@ -143,6 +143,11 @@ debootstrap $DEBOOTSTRAP_OPTS \
 
 # Setup and finalize
 build::setup || { echo "Error: build::setup failed" >&2; exit 1; }
+
+# Update and upgrade packages inside chroot
+echo "Updating and upgrading packages..."
+build::chroot_script "build/debian/update-sources.sh" || { echo "Error: update-sources.sh failed" >&2; exit 1; }
+
 build::finalize || { echo "Error: build::finalize failed" >&2; exit 1; }
 
 # Create archive
