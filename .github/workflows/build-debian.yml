@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         distro: [debian, ubuntu]
-        arch: [amd64, i386]
+        arch: [amd64, arm64, i386, armhf]
         release:
           # Debian releases
           - distro_name: debian
@@ -42,6 +42,8 @@ jobs:
           - distro: ubuntu
             release:
               distro_name: debian
+          - distro: ubuntu
+            arch: i386
     
     steps:
       - name: Checkout repository
@@ -130,9 +132,9 @@ jobs:
           ### Distributions
           
           #### Debian
-          - **Bullseye (11)** - Oldstable
-          - **Bookworm (12)** - Oldstable
           - **Trixie (13)** - Stable
+          - **Bookworm (12)** - Oldstable
+          - **Bullseye (11)** - Oldstable
 
           #### Ubuntu
           - **Noble (24.04)** - LTS
@@ -141,7 +143,9 @@ jobs:
 
           ### Architectures
           - \`amd64\` - 64-bit x86
-          - \`i386\` - 32-bit x86
+          - \`i386\` - 32-bit x86 (Only for Debian)
+          - \`arm64\` - 64-bit ARM
+          - \`armhf\` - 32-bit ARM
 
           If you need a different architecture or distribution, you could build it using the build/debian.sh script in this repository.
 

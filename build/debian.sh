@@ -22,7 +22,7 @@ ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,ipu
 # Distro configuration map
 case "$DISTRO" in
     debian)
-        DISTRO_RELEASE="${DISTRO_RELEASE:-bookworm}"
+        DISTRO_RELEASE="${DISTRO_RELEASE:-trixie}"
         DEFAULT_MIRRORS=(
             "http://deb.debian.org/debian"
             "http://ftp.us.debian.org/debian"
