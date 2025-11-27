@@ -19,8 +19,6 @@ for _required_var in FAMILY DISTRO ROOTFS_DIR; do
 done
 unset _required_var
 
-chr_prefix=""
-
 # Create a directory structure with multiple paths
 _create_directories() {
     for dir in "$@"; do
@@ -127,8 +125,7 @@ build::chroot() {
     # Execute in chroot
     local exit_code=0
     set +e
-    echo "Running command in chroot: "$chr_prefix" ${cmd[*]}"
-    chroot "$ROOTFS_DIR" "$chr_prefix" "${cmd[@]}"
+    chroot "$ROOTFS_DIR" "${cmd[@]}"
     exit_code=$?
     set -e
     
