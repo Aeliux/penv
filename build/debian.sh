@@ -35,7 +35,7 @@ case "$DISTRO" in
         DISTRO_RELEASE="${DISTRO_RELEASE:-noble}"
         DEFAULT_MIRRORS=(
             "http://archive.ubuntu.com/ubuntu"
-            "http://ports.ubuntu.com"
+            "http://ports.ubuntu.com/ubuntu-ports"
         )
         KEYRING_PACKAGE="ubuntu-keyring"
         KEYRING_FILE="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
@@ -59,7 +59,7 @@ readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/$$/${DISTRO}-${DISTRO_RELEASE}-${DI
 # Source build library
 . build/core/build.sh
 
-readonly PACKAGE_VERSION="${PENV_VERSION}"
+readonly PACKAGE_VERSION="2.1.1"
 readonly OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
 
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."
