@@ -301,6 +301,12 @@ build::finalize() {
         return 1
     fi
     
+    # Run tests if SKIP_TESTS is not set
+    if [ -n "${SKIP_TESTS:-}" ]; then
+        echo "Skipping tests as SKIP_TESTS is set"
+        return 0
+    fi
+    
     export PENV_BUILD_STAGE="test"
     # error if exit code is 2 (test failures)
     set +e
