@@ -370,9 +370,9 @@ exec_in_proot(){
   fi
 
   local compare_result=0
-  compare_versions "$CLIENT_VERSION" "$(get_penv_version "$rootfs")" || compare_result=$?
+  compare_versions "$CLIENT_COMPATIBILITY" "$(get_penv_version "$rootfs")" || compare_result=$?
   if [[ $compare_result -eq 2 ]]; then
-      warn "Warning: penv client version ($CLIENT_VERSION) is older than environment version ($(get_penv_version "$rootfs"))"
+      warn "Warning: penv client compatible version ($CLIENT_COMPATIBILITY) is older than environment version ($(get_penv_version "$rootfs"))"
       warn "Some features may not work as expected. Consider updating penv."
       echo
   fi

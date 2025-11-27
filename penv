@@ -8,7 +8,8 @@ IFS=$'\n\t'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
 
-CLIENT_VERSION="2.0"
+CLIENT_VERSION="2.0.1"
+CLIENT_COMPATIBILITY="2.0"
 
 # Source configurations
 if [ -f "$SCRIPT_DIR/config.sh" ]; then
