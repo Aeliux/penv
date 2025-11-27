@@ -18,10 +18,12 @@ Package: penv-manban
 Version: 1.0
 Architecture: all
 Maintainer: itsaeliux@gmail.com
-Provides: man-db
-Conflicts: man-db
-Replaces: man-db
-Description: Dummy package to block man-db from installing
+Priority: required
+Essential: yes
+Provides: man-db, man
+Conflicts: man-db, man
+Replaces: man-db, man
+Description: Dummy package to block man from installing
 EOF
 
 # build and install
