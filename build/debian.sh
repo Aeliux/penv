@@ -15,8 +15,6 @@ readonly FAMILY="debian"
 readonly DISTRO="${DISTRO:-debian}"  # debian or ubuntu
 DISTRO_RELEASE="${DISTRO_RELEASE:-}"
 readonly DISTRO_ARCH="${DISTRO_ARCH:-amd64}"
-readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-rootfs}"
-OUTPUT_FILE="${OUTPUT_FILE:-}"
 MIRROR="${MIRROR:-}"
 
 ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,iputils-ping,nano,ed,xz-utils,bzip2,zip,unzip,${ADDITIONAL_PACKAGES:-}"
@@ -60,8 +58,8 @@ fi
 . build/core/build.sh
 
 readonly PACKAGE_VERSION="${PENV_VERSION}"
-
-OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
+readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs}"
+readonly OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
 
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."
 
@@ -104,7 +102,7 @@ fi
 set -e
 echo "Using mirror: $MIRROR"
 
-# Clean up and prepare
+# Cleanup and prepare
 if [ -d "$ROOTFS_DIR" ]; then
     # Check for mounted filesystems and FAIL IMMEDIATELY
     mountpoints_found=0
@@ -131,10 +129,6 @@ if [ "$HOST_ARCH" != "$DISTRO_ARCH" ]; then
     foreign_arch=1
 fi
 
-if [ "$foreign_arch" -eq 1 ]; then
-    DEBOOTSTRAP_OPTS+=" --foreign"
-fi
-
 # Bootstrap rootfs
 echo "Running debootstrap..."
 cache_dir="/var/cache/penv/$DISTRO/$DISTRO_RELEASE"
@@ -146,19 +140,9 @@ debootstrap $DEBOOTSTRAP_OPTS \
     "$ROOTFS_DIR" \
     "$MIRROR"
 
-qemu_bin_name="qemu-${DISTRO_ARCH}-static"
-if [ "$foreign_arch" -eq 1 ]; then
-    echo "Completing debootstrap for foreign architecture..."
-    cp "/usr/bin/$qemu_bin_name" "$ROOTFS_DIR/usr/bin/"
-    chroot "$ROOTFS_DIR" /usr/bin/"$qemu_bin_name" /bin/bash -l -c "/debootstrap/debootstrap --second-stage"
-    chr_prefix="/usr/bin/$qemu_bin_name"
-fi
-
 # Setup and finalize
 build::setup || { echo "Error: build::setup failed" >&2; exit 1; }
 build::finalize || { echo "Error: build::finalize failed" >&2; exit 1; }
-
-rm -f "$ROOTFS_DIR/usr/bin/$qemu_bin_name"
 
 # Create archive
 echo "Creating tar.gz archive..."
