@@ -1,5 +1,7 @@
 # build.sh - Functions to build and set up a root filesystem
 
+set -e
+
 readonly PENV_VERSION="2"
 readonly PENV_BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
@@ -54,8 +56,13 @@ EOF
 # Execute a command inside the chroot environment
 # Usage: build::chroot [command...]
 build::chroot() {
-    local cmd="${1:-/bin/sh /penv/startup.sh}"
-    shift 2>/dev/null || true
+    local cmd=("$@")
+    startup=("/bin/sh" -- "/penv/startup.sh")
+    if [ "${#cmd[@]}" -eq 0 ]; then
+        cmd=("${startup[@]}")
+    else
+        cmd=("${startup[@]}" "${cmd[@]}")
+    fi
     
     local mounted_dev=0
     local mounted_proc=0
@@ -283,9 +290,16 @@ build::finalize() {
     
     export PENV_BUILD_STAGE="test"
     # error if exit code is 2 (test failures)
-    if build::chroot || [ $? -eq 2 ]; then
+    set +e
+    build::chroot
+    test_exit_code=$?
+    if [ "$test_exit_code" -eq 2 ]; then
         echo "Error: Test script failed" >&2
         return 1
+    elif [ "$test_exit_code" -eq 1 ]; then
+        echo "Error: Test script finished with warnings" >&2
     fi
+    set -e
+
     unset PENV_BUILD_STAGE
 }
