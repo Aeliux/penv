@@ -10,3 +10,8 @@ export APT_CONFIG=/etc/apt/apt.conf.d/99proot
 # Fix for some apt operations in proot
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
+export DEBIAN_PRIORITY=critical
+
+if [ "$PENV_ENV_MODE" = "prepare" ]; then
+    dpkg --configure -a
+fi

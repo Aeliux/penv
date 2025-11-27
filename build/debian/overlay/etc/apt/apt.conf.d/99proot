@@ -4,3 +4,11 @@ Acquire::Retries "3";
 Acquire::http::Timeout "10";
 Dir::Cache::srcpkgcache "";
 Dir::Cache::pkgcache "";
+
+APT::Install-Recommends "0";
+APT::Install-Suggests "0";
+
+DPkg::Options {
+  "--force-confdef";
+  "--force-confold";
+};
