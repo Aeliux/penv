@@ -45,12 +45,14 @@ case "$DISTRO" in
         ;;
 esac
 
-OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs.tar.gz}"
-
-# Source build functions
+# Source build library
 . build/core/build.sh
 
-echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) rootfs..."
+readonly PACKAGE_VERSION="${PENV_VERSION}"
+
+OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
+
+echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."
 
 # Verify dependencies
 if ! command -v debootstrap >/dev/null 2>&1; then

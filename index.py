@@ -71,6 +71,25 @@ entries: Dict[str, List[Entry]] = {
 distros: List[Distro] = entries["distros"]
 addons: List[Addon] = entries["addons"]
 
+def handle_aliases(version, distro_base, is_latest, aliases):
+    version_short = version.split('.')[0]  # "20.04" -> "20"
+    final_aliases = []
+    
+    final_aliases.append(f"{distro_base}-{version}")  # e.g., "debian-11"
+    # Add short version alias if different from full version
+    if version_short != version:
+        final_aliases.append(f"{distro_base}-{version_short}")
+    
+    # Add base distro alias if this is marked as latest
+    if is_latest:
+        final_aliases.append(distro_base)
+    
+    # Merge with custom aliases
+    if aliases:
+        final_aliases.extend(aliases)
+    
+    return final_aliases
+
 def add_penv_distro(
     family: str,       # e.g., "debian", "alpine"
     distro_base: str,  # e.g., "debian", "ubuntu"
@@ -95,24 +114,7 @@ def add_penv_distro(
         is_latest: If True, adds base distro name as alias (e.g., "debian", "ubuntu")
     """
     distro_id = f"{distro_base}-{version}-{release}"
-    version_short = version.split('.')[0]  # "20.04" -> "20"
-    
-    # Auto-generate aliases
-    auto_aliases = [
-        f"{distro_base}-{version}",  # e.g., "debian-11"
-    ]
-    
-    # Add short version alias if different from full version
-    if '.' in version:
-        auto_aliases.append(f"{distro_base}-{version_short}")
-    
-    # Add base distro alias if this is marked as latest
-    if is_latest:
-        auto_aliases.append(distro_base)
-    
-    # Merge with custom aliases
-    if aliases:
-        auto_aliases.extend(aliases)
+    final_aliases = handle_aliases(version, distro_base, is_latest, aliases)
     
     # Generate URLs for each architecture
     urls = []
@@ -131,7 +133,60 @@ def add_penv_distro(
             name=f"{distro_base.capitalize()} {version} {release}",
             description=f"{distro_base.capitalize()} {version} ({codename}) penv v{release} rootfs",
             urls=urls,
-            aliases=auto_aliases
+            aliases=final_aliases
+        )
+    )
+
+def add_penv2_distro(
+    family: str,                            # e.g., "debian", "alpine"
+    distro: str,                       # e.g., "debian", "ubuntu"
+    distro_version: str,                    # e.g., "11", "12", "20.04"
+    package_version: str,                   # e.g., "1.0"
+    distro_codename: str | None = None,     # e.g., "bullseye", "bookworm", "focal"
+    archs: List[str] = ["amd64", "i386", "arm64", "armhf"],
+    aliases: List[str] = None,
+    is_latest: bool = False
+):
+    """
+    Add a penv2 distro with standardized naming and URL patterns.
+    
+    Args:
+        family: Distro family for URL construction (e.g., "debian", "alpine")
+        distro: Base distro name (debian/ubuntu)
+        distro_version: Version number (can include dots like "20.04")
+        package_version: penv2 package version
+        distro_codename: Release codename
+        archs: List of architectures to include
+        aliases: Additional custom aliases (auto-generated ones are added automatically)
+        is_latest: If True, adds base distro name as alias (e.g., "debian", "ubuntu")
+    """
+    if distro_codename is None:
+        distro_codename = distro_version  # Fallback if codename not provided
+    
+    distro_id = f"{distro}-{distro_version}-{package_version}"
+    final_aliases = handle_aliases(version=distro_version,
+                                   distro_base=distro,
+                                   is_latest=is_latest,
+                                   aliases=aliases)
+
+    # Generate URLs for each architecture
+    urls = []
+    for arch in archs:
+        urls.append(
+            Url(
+                arch=arch,
+                url=f"https://github.com/Aeliux/penv/releases/download/{family}-{package_version}/{distro}-{distro_codename}-{arch}-{package_version}-rootfs.tar.gz"
+            )
+        )
+    
+    distros.append(
+        Distro(
+            family=family,
+            id=distro_id,
+            name=f"{distro.capitalize()} {distro_version} {package_version}",
+            description=f"{distro.capitalize()} {distro_version} {f'({distro_codename})' if distro_codename else ''} penv v{package_version} rootfs",
+            urls=urls,
+            aliases=final_aliases
         )
     )
 
