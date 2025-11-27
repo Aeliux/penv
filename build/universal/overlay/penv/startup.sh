@@ -30,7 +30,7 @@ trap cleanup EXIT INT TERM
 # Unset host environment variables (keep PENV_* and safe variables)
 for var in $(env | cut -d= -f1); do
     case "$var" in
-        PENV_*|HOME|USER|SHELL|TERM|LANG|LC_ALL|LC_CTYPE|PATH|PWD|OLDPWD|SHLVL|_)
+        PENV_*|HOME|USER|SHELL|TERM|COLORTERM|LANG|LC_ALL|LC_CTYPE|DISPLAY|PATH|PWD|OLDPWD|SHLVL|_)
             continue ;;
         *)
             unset "$var" ;;
