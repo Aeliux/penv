@@ -21,3 +21,5 @@ fi
 if [ -f /etc/locale.gen ] && command -v locale-gen >/dev/null 2>&1; then
   locale-gen >/dev/null 2>&1 || true
 fi
+
+rm -f /penv/.prepare_required

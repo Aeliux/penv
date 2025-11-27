@@ -37,8 +37,8 @@ for var in $(env | cut -d= -f1); do
     esac
 done
 
-# Check for prepare signal only if not already in prepare mode
-if [ "$PENV_ENV_MODE" != "prepare" ] && [ -f /penv/.prepare_required ]; then
+# Check for prepare signal
+if [ "$PENV_ENV_MODE" = "environment" ] && [ -f /penv/.prepare_required ]; then
     export PENV_ENV_MODE="prepare"
     export PENV_PREPARE_REQUIRED=1
     echo "Preparation required, running preparation scripts..."

@@ -112,7 +112,7 @@ build::chroot() {
     # Execute in chroot
     local exit_code=0
     set +e
-    chroot "$ROOTFS_DIR" /bin/sh -c "$cmd" "$@"
+    chroot "$ROOTFS_DIR" "${cmd[@]}"
     exit_code=$?
     set -e
     
@@ -297,7 +297,7 @@ build::finalize() {
         echo "Error: Test script failed" >&2
         return 1
     elif [ "$test_exit_code" -eq 1 ]; then
-        echo "Error: Test script finished with warnings" >&2
+        echo "Test script finished with warnings" >&2
     fi
     set -e
 
