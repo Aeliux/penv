@@ -27,6 +27,9 @@ if [ $VERBOSE -eq 1 ]; then
     echo "Performing deep cleanup..."
 fi
 
+# Add prepare signal file
+: > /penv/.prepare_required || true
+
 # tmp and var tmp
 rm $RM_FLAGS /tmp/* || true
 rm $RM_FLAGS /var/tmp/* || true
@@ -38,14 +41,14 @@ for d in /home/*/.cache; do [ -e "$d" ] && rm $RM_FLAGS "$d" || true; done
 # truncate history files
 for h in /root/.bash_history /root/.ash_history /root/.zsh_history; do
     if [ -f "$h" ]; then
-        [ $VERBOSE -eq 1 ] && echo "trunc: $h"
+        #[ $VERBOSE -eq 1 ] && echo "trunc: $h"
         : > "$h"
     fi
 done
 for u in /home/*; do 
     for hh in "$u"/.*history; do
         if [ -f "$hh" ]; then
-            [ $VERBOSE -eq 1 ] && echo "trunc: $hh"
+            #[ $VERBOSE -eq 1 ] && echo "trunc: $hh"
             : > "$hh"
         fi
     done
@@ -54,7 +57,7 @@ done
 # logs: truncate files, remove archived logs and journal
 for f in /var/log/*; do
     if [ -f "$f" ]; then
-        [ $VERBOSE -eq 1 ] && echo "trunc: $f"
+        #[ $VERBOSE -eq 1 ] && echo "trunc: $f"
         : > "$f"
     fi
 done

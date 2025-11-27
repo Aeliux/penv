@@ -37,6 +37,13 @@ for var in $(env | cut -d= -f1); do
     esac
 done
 
+# Check for prepare signal only if not already in prepare mode
+if [ "$PENV_ENV_MODE" != "prepare" ] && [ -f /penv/.prepare_required ]; then
+    export PENV_ENV_MODE="prepare"
+    export PENV_PREPARE_REQUIRED=1
+    echo "Preparation required, running preparation scripts..."
+fi
+
 # Load core environment
 if [ -f /penv/core.sh ]; then
     . /penv/core.sh
@@ -79,7 +86,12 @@ fi
 # Exit early for build modes
 case "$PENV_ENV_MODE" in
     prepare|build)
-        exit 0 ;;
+        if [ -n "$PENV_PREPARE_REQUIRED" ] && [ "$PENV_ENV_MODE" = "prepare" ]; then
+            rm -f /penv/.prepare_required
+            echo "Preparation steps completed. Please restart the environment."
+        fi
+        exit 0
+        ;;
 esac
 
 # Launch shell or execute command
