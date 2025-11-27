@@ -56,8 +56,13 @@ EOF
 }
 
 build::install_binfmt(){
-    apt-get install -y qemu-user-static binfmt-support
-    mount -t binfmt_misc none /proc/sys/fs/binfmt_misc 2>/dev/null || true
+    if [ -n "${WSL_DISTRO_NAME:-}" ]; then
+        echo "Error: Binfmt installation is not supported in WSL environments" >&2
+        return 1    
+    fi
+
+    echo "Installing QEMU user static binaries and binfmt support..."
+    apt-get install -y -qq qemu-user-static binfmt-support
     update-binfmts --enable
     systemctl restart systemd-binfmt.service || true
 }
