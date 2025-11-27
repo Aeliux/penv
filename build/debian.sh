@@ -25,18 +25,22 @@ ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,ipu
 case "$DISTRO" in
     debian)
         DISTRO_RELEASE="${DISTRO_RELEASE:-bookworm}"
-        MIRROR="${MIRROR:-http://deb.debian.org/debian}"
+        DEFAULT_MIRRORS=(
+            "http://deb.debian.org/debian"
+            "http://ftp.us.debian.org/debian"
+        )
         KEYRING_PACKAGE="debian-archive-keyring"
         KEYRING_FILE="/usr/share/keyrings/debian-archive-keyring.gpg"
-        FALLBACK_MIRROR="http://ftp.us.debian.org/debian"
         DEBOOTSTRAP_OPTS="--arch=$DISTRO_ARCH --variant=minbase"
         ;;
     ubuntu)
         DISTRO_RELEASE="${DISTRO_RELEASE:-noble}"
-        MIRROR="${MIRROR:-http://archive.ubuntu.com/ubuntu}"
+        DEFAULT_MIRRORS=(
+            "http://archive.ubuntu.com/ubuntu"
+            "http://ports.ubuntu.com"
+        )
         KEYRING_PACKAGE="ubuntu-keyring"
         KEYRING_FILE="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
-        FALLBACK_MIRROR="http://us.archive.ubuntu.com/ubuntu"
         DEBOOTSTRAP_OPTS="--arch=$DISTRO_ARCH --variant=minbase --components=main,universe"
         ;;
     *)
@@ -44,6 +48,13 @@ case "$DISTRO" in
         exit 1
         ;;
 esac
+
+# Mirror selection (deduplicated)
+if [ -n "$MIRROR" ]; then
+    IFS=',' read -ra MIRRORS <<< "$MIRROR"
+else
+    MIRRORS=("${DEFAULT_MIRRORS[@]}")
+fi
 
 # Source build library
 . build/core/build.sh
@@ -67,21 +78,62 @@ if [ ! -f "$KEYRING_FILE" ]; then
     apt-get install -y "$KEYRING_PACKAGE"
 fi
 
-# Test mirror connectivity
-echo "Testing network connectivity..."
-if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DISTRO_RELEASE/Release" 2>/dev/null; then
-    echo "Warning: Primary mirror unreachable, trying fallback..." >&2
-    MIRROR="$FALLBACK_MIRROR"
-    if ! wget -q --spider --timeout=10 "$MIRROR/dists/$DISTRO_RELEASE/Release" 2>/dev/null; then
-        echo "Error: Cannot reach any ${DISTRO^} mirrors. Check network/DNS." >&2
-        exit 1
-    fi
+# Test mirrors for arch support
+echo "Selecting mirror for $DISTRO_RELEASE ($DISTRO_ARCH)..."
+select_mirror() {
+    local release="$1"
+    local arch="$2"
+    shift 2
+    local mirrors=("$@")
+    for m in "${mirrors[@]}"; do
+        url="$m/dists/$release/main/binary-$arch/Release"
+        if wget -q --spider --timeout=10 "$url"; then
+            echo "$m"
+            return 0
+        fi
+    done
+    return 1
+}
+
+set +e
+MIRROR="$(select_mirror "$DISTRO_RELEASE" "$DISTRO_ARCH" "${MIRRORS[@]}")"
+if [ -z "$MIRROR" ]; then
+    echo "Error: No mirrors found for $DISTRO_RELEASE ($DISTRO_ARCH)" >&2
+    exit 1
 fi
+set -e
 echo "Using mirror: $MIRROR"
 
 # Clean up and prepare
-[ -d "$ROOTFS_DIR" ] && rm -rf "$ROOTFS_DIR"
+if [ -d "$ROOTFS_DIR" ]; then
+    # Check for mounted filesystems and FAIL IMMEDIATELY
+    mountpoints_found=0
+    for mp in dev dev/pts dev/shm proc sys; do
+        if mountpoint -q "$ROOTFS_DIR/$mp"; then
+            echo "Error: Mountpoint $ROOTFS_DIR/$mp is still mounted. Please unmount before proceeding." >&2
+            mountpoints_found=1
+        fi
+    done
+    if [ $mountpoints_found -ne 0 ]; then
+        exit 1
+    fi
+    echo "Removing existing rootfs at $ROOTFS_DIR..."
+    rm -rf "$ROOTFS_DIR"
+fi
 mkdir -p "$(dirname "$ROOTFS_DIR")"
+
+# Detect foreign architecture and install binfmt if needed
+HOST_ARCH="$(dpkg --print-architecture)"
+foreign_arch=0
+if [ "$HOST_ARCH" != "$DISTRO_ARCH" ]; then
+    echo "Detected foreign architecture build: host=$HOST_ARCH, target=$DISTRO_ARCH"
+    build::install_binfmt || { echo "Error: build::install_binfmt failed" >&2; exit 1; }
+    foreign_arch=1
+fi
+
+if [ "$foreign_arch" -eq 1 ]; then
+    DEBOOTSTRAP_OPTS+=" --foreign"
+fi
 
 # Bootstrap rootfs
 echo "Running debootstrap..."
@@ -94,9 +146,19 @@ debootstrap $DEBOOTSTRAP_OPTS \
     "$ROOTFS_DIR" \
     "$MIRROR"
 
+qemu_bin_name="qemu-${DISTRO_ARCH}-static"
+if [ "$foreign_arch" -eq 1 ]; then
+    echo "Completing debootstrap for foreign architecture..."
+    cp "/usr/bin/$qemu_bin_name" "$ROOTFS_DIR/usr/bin/"
+    chroot "$ROOTFS_DIR" /usr/bin/"$qemu_bin_name" /bin/bash -l -c "/debootstrap/debootstrap --second-stage"
+    chr_prefix="/usr/bin/$qemu_bin_name"
+fi
+
 # Setup and finalize
 build::setup || { echo "Error: build::setup failed" >&2; exit 1; }
 build::finalize || { echo "Error: build::finalize failed" >&2; exit 1; }
+
+rm -f "$ROOTFS_DIR/usr/bin/$qemu_bin_name"
 
 # Create archive
 echo "Creating tar.gz archive..."

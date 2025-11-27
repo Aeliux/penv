@@ -19,6 +19,8 @@ for _required_var in FAMILY DISTRO ROOTFS_DIR; do
 done
 unset _required_var
 
+chr_prefix=""
+
 # Create a directory structure with multiple paths
 _create_directories() {
     for dir in "$@"; do
@@ -51,6 +53,13 @@ PENV_METADATA_FAMILY="$FAMILY"
 PENV_METADATA_DISTRO="$DISTRO"
 PENV_METADATA_TIMESTAMP="$PENV_BUILD_TIMESTAMP"
 EOF
+}
+
+build::install_binfmt(){
+    apt-get install -y qemu-user-static binfmt-support
+    mount -t binfmt_misc none /proc/sys/fs/binfmt_misc 2>/dev/null || true
+    update-binfmts --enable
+    systemctl restart systemd-binfmt.service || true
 }
 
 # Execute a command inside the chroot environment
@@ -112,7 +121,8 @@ build::chroot() {
     # Execute in chroot
     local exit_code=0
     set +e
-    chroot "$ROOTFS_DIR" "${cmd[@]}"
+    echo "Running command in chroot: "$chr_prefix" ${cmd[*]}"
+    chroot "$ROOTFS_DIR" "$chr_prefix" "${cmd[@]}"
     exit_code=$?
     set -e
     
