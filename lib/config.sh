@@ -14,10 +14,22 @@ INDEX_URL="${PENV_INDEX_URL:-https://raw.githubusercontent.com/Aeliux/penv/maste
 # Detect system architecture
 ARCH="$(uname -m)"
 case "$ARCH" in
-  x86_64) ARCH="amd64" ;;
-  aarch64|arm64) ARCH="arm64" ;;
-  armv7l) ARCH="armv7" ;;
-  i686) ARCH="i386" ;;
+  x86_64|amd64) ARCH="amd64" ;;           # Popular: amd64
+  aarch64|arm64) ARCH="arm64" ;;          # Popular: arm64
+  armv8*|armv8l) ARCH="arm64" ;;          # Popular: arm64
+  armv7l|armhf) ARCH="armhf" ;;           # Popular: armhf
+  armv6l|armel) ARCH="armel" ;;           # Popular: armel
+  i686|i386) ARCH="i386" ;;               # Popular: i386
+  x86|i486|i586) ARCH="i386" ;;           # Popular: i386
+  ppc64le) ARCH="ppc64le" ;;              # Popular: ppc64le
+  ppc64) ARCH="ppc64" ;;                  # Popular: ppc64
+  s390x) ARCH="s390x" ;;                  # Popular: s390x
+  riscv64) ARCH="riscv64" ;;              # Popular: riscv64
+  mips64el) ARCH="mips64el" ;;            # Popular: mips64el
+  mipsel) ARCH="mipsel" ;;                # Popular: mipsel
+  mips64) ARCH="mips64" ;;                # Popular: mips64
+  mips) ARCH="mips" ;;                    # Popular: mips
+  *) ;;                                   # Leave as-is if unknown
 esac
 
 # -------- Color codes --------
