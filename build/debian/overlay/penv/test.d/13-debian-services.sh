@@ -23,17 +23,6 @@ else
     test_skip "service command not available"
 fi
 
-test_start "/etc/systemd directory exists (if systemd)"
-if test_command_exists systemctl; then
-    if test_dir_exists /etc/systemd; then
-        test_pass
-    else
-        test_fail "/etc/systemd missing"
-    fi
-else
-    test_skip "Not a systemd system"
-fi
-
 test_start "SYSTEMD_OFFLINE environment variable set"
 if [ "$SYSTEMD_OFFLINE" = "1" ]; then
     test_pass

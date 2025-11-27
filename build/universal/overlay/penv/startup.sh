@@ -84,13 +84,14 @@ if [ "$PENV_ENV_MODE" = "build" ] && [ "$PENV_BUILD_STAGE" = "test" ] && [ -x /p
 fi
 
 # Exit early for build modes
+should_exit=0
 case "$PENV_ENV_MODE" in
     prepare|build)
         if [ -n "$PENV_PREPARE_REQUIRED" ] && [ "$PENV_ENV_MODE" = "prepare" ]; then
             rm -f /penv/.prepare_required
             echo "Preparation steps completed. Please restart the environment."
         fi
-        exit 0
+        should_exit=1
         ;;
 esac
 
@@ -98,6 +99,8 @@ esac
 if [ "$#" -gt 0 ]; then
     "$@"
     exit $?
+elif [ $should_exit -eq 1 ]; then
+    exit 0
 fi
 
 for shell in /bin/bash /usr/bin/bash /bin/sh /usr/bin/sh; do

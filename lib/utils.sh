@@ -305,30 +305,42 @@ get_penv_version() {
 }
 
 compare_versions() {
-    local ver1=(${1//./ })
-    local ver2=(${2//./ })
-    local len=$(( ${#ver1[@]} > ${#ver2[@]} ? ${#ver1[@]} : ${#ver2[@]} ))
+  local ver1="$1"
+  local ver2="$2"
 
-    for ((i=0; i<len; i++)); do
-        local v1="${ver1[i]:-0}"
-        local v2="${ver2[i]:-0}"
+  # Pad the shorter version with zeros
+  local IFS=.
+  read -r -a ver1_parts <<< "$ver1"
+  read -r -a ver2_parts <<< "$ver2"
+  local len1=${#ver1_parts[@]}
+  local len2=${#ver2_parts[@]}
+  local max_len=$(( len1 > len2 ? len1 : len2 ))
+  for ((i=len1; i<max_len; i++)); do
+    ver1_parts[i]=0
+  done
+  for ((i=len2; i<max_len; i++)); do
+    ver2_parts[i]=0
+  done
+  ver1="${ver1_parts[*]}"
+  ver2="${ver2_parts[*]}"
+  ver1=${ver1// /./}
+  ver2=${ver2// /./}
+  echo "Comparing versions: $ver1 vs $ver2"
 
-        # Remove any spaces (defensive)
-        v1="${v1//[[:space:]]/}"
-        v2="${v2//[[:space:]]/}"
-
-        # If not a number, default to 0
-        [[ "$v1" =~ ^[0-9]+$ ]] || v1=0
-        [[ "$v2" =~ ^[0-9]+$ ]] || v2=0
-
-        if ((10#$v1 > 10#$v2)); then
-            return 1
-        elif ((10#$v1 < 10#$v2)); then
-            return 2
-        fi
-    done
-
-    return 0
+  # Compare using sort -V
+  local sorted_versions
+  sorted_versions=$(printf "%s\n%s\n" "$ver1" "$ver2")
+  sorted_versions=$(echo "$sorted_versions" | sort -V)
+  
+  if [[ "$(echo "$sorted_versions" | head -n1)" == "$ver2" ]]; then
+    if [[ "$ver1" == "$ver2" ]]; then
+      return 0
+    else
+      return 1
+    fi
+  else
+    return 2
+  fi
 }
 
 # Find available shell in rootfs
@@ -370,9 +382,9 @@ exec_in_proot(){
   fi
 
   local compare_result=0
-  compare_versions "$CLIENT_COMPATIBILITY" "$(get_penv_version "$rootfs")" || compare_result=$?
-  if [[ $compare_result -eq 2 ]]; then
-      warn "Warning: penv client compatible version ($CLIENT_COMPATIBILITY) is older than environment version ($(get_penv_version "$rootfs"))"
+  compare_versions "$CLIENT_COMPATIBILITY_MAX" "$(get_penv_version "$rootfs")" || compare_result=$?
+  if [[ $compare_result -ne 1 ]]; then
+      warn "Warning: current version of penv client may be not compatible with environment version ($(get_penv_version "$rootfs"))"
       warn "Some features may not work as expected. Consider updating penv."
       echo
   fi

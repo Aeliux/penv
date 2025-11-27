@@ -7,7 +7,7 @@ export PENV_CONFIG_VERBOSE=1
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-readonly PENV_VERSION="2.0"
+readonly PENV_VERSION="2.1"
 readonly PENV_BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Validate required environment variables at source time
@@ -124,27 +124,27 @@ build::chroot() {
     
     # Execute in chroot
     local exit_code=0
-    set +e
-    chroot "$ROOTFS_DIR" "${cmd[@]}"
-    exit_code=$?
-    set -e
+    echo "Entering chroot to execute command: ${cmd[*]}"
+    chroot "$ROOTFS_DIR" "${cmd[@]}" || exit_code=$?
     
     # Remove trap and cleanup explicitly
     trap - EXIT
     _cleanup_mounts
     
+    echo "Chroot command exited with code $exit_code"
     return $exit_code
 }
 
 # Execute a script inside the chroot environment
-# Usage: build::chroot_script <script-path>
+# Usage: build::chroot_script <script-path> [args...]
 build::chroot_script() {
-    if [ "$#" -ne 1 ]; then
-        echo "Usage: build::chroot_script <script-path>" >&2
+    if [ "$#" -lt 1 ]; then
+        echo "Usage: build::chroot_script <script-path> [args...]" >&2
         return 1
     fi
-    
     local script_path="$1"
+    shift
+    local script_args=("$@")
     local script_name
     script_name="$(basename "$script_path")"
     local relative_path="${script_path#$script_dir/}"
@@ -168,7 +168,7 @@ build::chroot_script() {
     
     # Execute using build::chroot
     local exit_code=0
-    build::chroot "/bin/sh $temp_script" || exit_code=$?
+    build::chroot "$temp_script" "${script_args[@]}" || exit_code=$?
     
     # Clean up
     rm -f "$ROOTFS_DIR$temp_script"
@@ -200,8 +200,8 @@ build::setup() {
     
     # Apply overlays to rootfs recursively
     echo "Applying overlays..."
-    #run it for both universal and $DISTRO overlays
-    for overlay in "universal" "$DISTRO"; do
+    #run it for both universal and $FAMILY overlays
+    for overlay in "universal" "$FAMILY"; do
         overlay_dir="$script_dir/build/$overlay/overlay"
         if [ -d "$overlay_dir" ]; then
             if ! cp -a "$overlay_dir/." "$ROOTFS_DIR/"; then
@@ -306,7 +306,7 @@ build::finalize() {
         echo "Skipping tests as SKIP_TESTS is set"
         return 0
     fi
-    
+
     export PENV_BUILD_STAGE="test"
     # error if exit code is 2 (test failures)
     set +e

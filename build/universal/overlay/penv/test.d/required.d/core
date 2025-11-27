@@ -18,6 +18,8 @@ rm
 mkdir
 # Remove empty directories
 rmdir
+# Create temporary files and directories
+mktemp
 # Create hard/soft links
 ln
 # Print current working directory

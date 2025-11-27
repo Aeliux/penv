@@ -21,27 +21,37 @@ penv::requires_version() {
         return 1
     fi
 
-    if [ "$PENV_VERSION" = "$required_version" ]; then
+    local ver1="$PENV_VERSION"
+    local ver2="$required_version"
+
+    # Pad the shorter version with zeros
+    local IFS=.
+    read -r -a ver1_parts <<< "$ver1"
+    read -r -a ver2_parts <<< "$ver2"
+    local len1=${#ver1_parts[@]}
+    local len2=${#ver2_parts[@]}
+    local max_len=$(( len1 > len2 ? len1 : len2 ))
+    for ((i=len1; i<max_len; i++)); do
+        ver1_parts[i]=0
+    done
+    for ((i=len2; i<max_len; i++)); do
+        ver2_parts[i]=0
+    done
+    ver1="${ver1_parts[*]}"
+    ver2="${ver2_parts[*]}"
+    ver1=${ver1// /./}
+    ver2=${ver2// /./}
+    echo "Comparing versions: $ver1 vs $ver2"
+
+    # Compare using sort -V
+    local sorted_versions
+    sorted_versions=$(printf "%s\n%s\n" "$ver1" "$ver2")
+    sorted_versions=$(echo "$sorted_versions" | sort -V)
+    
+    if [[ "$(echo "$sorted_versions" | head -n1)" == "$ver2" ]]; then
         return 0
     else
-        # compare versions
-        local IFS=.
-        local i ver1=($PENV_VERSION) ver2=($required_version)
-        # fill empty fields in ver1 with zeros
-        for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
-            ver1[i]=0
-        done
-        for ((i=0; i<${#ver1[@]}; i++)); do
-            if [ -z "${ver2[i]}" ]; then
-                ver2[i]=0
-            fi
-            if ((10#${ver1[i]} < 10#${ver2[i]})); then
-                return 1
-            elif ((10#${ver1[i]} > 10#${ver2[i]})); then
-                return 0
-            fi
-        done
-        return 0
+        return 1
     fi
 }
 
