@@ -62,6 +62,13 @@ rm $RM_FLAGS /var/log/*.gz || true
 rm $RM_FLAGS /var/log/*.[0-9] || true
 rm $RM_FLAGS /var/log/journal || true
 
+# Truncate machine-id files
+: > /etc/machine-id || true
+: > /var/lib/dbus/machine-id || true
+
+# Remove ssh host keys
+rm $RM_FLAGS /etc/ssh/ssh_host_* || true
+
 # runtime caches and thumbnails
 rm $RM_FLAGS /var/cache/fontconfig || true
 find / $FIND_EXCLUDES -type d -name "__pycache__" -print0 | xargs -0 rm $RM_FLAGS || true
