@@ -98,7 +98,7 @@ readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/$$/${DISTRO}-${DISTRO_RELEASE}-${DI
 # Source build library
 . build/core/build.sh
 
-readonly PACKAGE_VERSION="2.1.2"
+readonly PACKAGE_VERSION="${PENV_VERSION}"
 readonly OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
 
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."
@@ -125,13 +125,14 @@ debootstrap $DEBOOTSTRAP_OPTS \
     "$ROOTFS_DIR" \
     "$MIRROR"
 
-# Setup and finalize
+# Setup penv
 build::setup || { echo "Error: build::setup failed" >&2; exit 1; }
 
 # Update and upgrade packages inside chroot
 echo "Updating and upgrading packages..."
 build::chroot_script "build/debian/update-sources.sh" "$DISTRO" "$DISTRO_RELEASE" "$MIRROR" || { echo "Error: update-sources.sh failed" >&2; exit 1; }
 
+# Finalize rootfs
 build::finalize || { echo "Error: build::finalize failed" >&2; exit 1; }
 
 # Create archive

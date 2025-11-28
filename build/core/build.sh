@@ -2,13 +2,13 @@
 
 set -e
 
+readonly PENV_VERSION="2.2"
+readonly PENV_BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
 export PENV_ENV_MODE="build"
 export PENV_CONFIG_VERBOSE=1
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-
-readonly PENV_VERSION="2.1"
-readonly PENV_BUILD_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # Validate required environment variables at source time
 for _required_var in FAMILY DISTRO ROOTFS_DIR; do
