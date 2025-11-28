@@ -5,6 +5,7 @@ set -e
 # This script sets up the runtime environment and launches a shell or executes a command
 
 # Cleanup function
+# shellcheck disable=SC2329
 cleanup() {
     # Source signal files
     if [ -d "$PENV_SIGNAL" ]; then

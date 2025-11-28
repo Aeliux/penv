@@ -137,7 +137,7 @@ build::finalize || { echo "Error: build::finalize failed" >&2; exit 1; }
 # Create archive
 echo "Creating tar.gz archive..."
 mkdir -p "$(dirname "$OUTPUT_FILE")"
-tar -czf "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
+tar -czf --numeric-owner "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
 chmod 644 "$OUTPUT_FILE"
 
 # Cleanup
@@ -145,4 +145,3 @@ rm -rf "$ROOTFS_DIR"
 
 echo "Done! rootfs saved to: $OUTPUT_FILE"
 echo "Size: $(du -h "$OUTPUT_FILE" | cut -f1)"
-

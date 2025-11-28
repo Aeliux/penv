@@ -6,7 +6,7 @@ export PENV_BUILD_STAGE=${PENV_BUILD_STAGE:-unknown}
 export PENV_CONFIG_VERBOSE=${PENV_CONFIG_VERBOSE:-0}
 
 # Set up runtime signal directory
-export PENV_SIGNAL=${PENV_SIGNAL:-"/tmp/penv/signals/$$"}
+export PENV_SIGNAL=${PENV_SIGNAL:-"/tmp/penv/signals"}
 rm -rf "$PENV_SIGNAL"
 mkdir -p "$PENV_SIGNAL"
 
@@ -34,6 +34,8 @@ fi
 export HOME="/root"
 export USER="root"
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 export SYSTEMD_OFFLINE=1
+export SYSTEMD_LOG_LEVEL=err
 
 export PENV_CORE_LOADED=1

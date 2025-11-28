@@ -19,4 +19,6 @@ fi
 rm $RM_FLAGS /tmp/* || true
 rm $RM_FLAGS /var/tmp/* || true
 
+rm $RM_FLAGS /run/systemd/system || true
+
 exit 0
