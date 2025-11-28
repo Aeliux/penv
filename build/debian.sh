@@ -8,6 +8,11 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+if ! command -v debootstrap >/dev/null 2>&1; then
+    echo "Error: debootstrap is not installed" >&2
+    exit 1
+fi
+
 cd "$(dirname "$0")/.."
 
 # Configuration
@@ -47,6 +52,13 @@ case "$DISTRO" in
         ;;
 esac
 
+# Ensure keyring is installed
+if [ ! -f "$KEYRING_FILE" ]; then
+    echo "Installing $KEYRING_PACKAGE..."
+    apt-get update -qq
+    apt-get install -qq -y "$KEYRING_PACKAGE"
+fi
+
 # Mirror selection (deduplicated)
 if [ -n "$MIRROR" ]; then
     IFS=',' read -ra MIRRORS <<< "$MIRROR"
@@ -54,31 +66,8 @@ else
     MIRRORS=("${DEFAULT_MIRRORS[@]}")
 fi
 
-readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/$$/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs}"
-
-# Source build library
-. build/core/build.sh
-
-readonly PACKAGE_VERSION="2.1.2"
-readonly OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
-
-echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."
-
-# Verify dependencies
-if ! command -v debootstrap >/dev/null 2>&1; then
-    echo "Error: debootstrap is not installed" >&2
-    exit 1
-fi
-
-# Ensure keyring is installed
-if [ ! -f "$KEYRING_FILE" ]; then
-    echo "Installing $KEYRING_PACKAGE..."
-    apt-get update -qq
-    apt-get install -y "$KEYRING_PACKAGE"
-fi
-
 # Test mirrors for arch support
-echo "Selecting mirror for $DISTRO_RELEASE ($DISTRO_ARCH)..."
+echo "Finding mirror for $DISTRO_RELEASE ($DISTRO_ARCH)..."
 select_mirror() {
     local release="$1"
     local arch="$2"
@@ -103,23 +92,18 @@ fi
 set -e
 echo "Using mirror: $MIRROR"
 
-# Cleanup and prepare
-if [ -d "$ROOTFS_DIR" ]; then
-    # Check for mounted filesystems and FAIL IMMEDIATELY
-    mountpoints_found=0
-    for mp in dev dev/pts dev/shm proc sys; do
-        if mountpoint -q "$ROOTFS_DIR/$mp"; then
-            echo "Error: Mountpoint $ROOTFS_DIR/$mp is still mounted. Please unmount before proceeding." >&2
-            mountpoints_found=1
-        fi
-    done
-    if [ $mountpoints_found -ne 0 ]; then
-        exit 1
-    fi
-    echo "Removing existing rootfs at $ROOTFS_DIR..."
-    rm -rf "$ROOTFS_DIR"
-fi
-mkdir -p "$(dirname "$ROOTFS_DIR")"
+
+readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/$$/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-rootfs}"
+
+# Source build library
+. build/core/build.sh
+
+readonly PACKAGE_VERSION="2.1.2"
+readonly OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
+
+echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."
+
+build::prepare_rootfs || { echo "Error: build::prepare_rootfs failed" >&2; exit 1; }
 
 # Detect foreign architecture and install binfmt if needed
 HOST_ARCH="$(dpkg --print-architecture)"

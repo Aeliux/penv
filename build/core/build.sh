@@ -53,6 +53,26 @@ PENV_METADATA_TIMESTAMP="$PENV_BUILD_TIMESTAMP"
 EOF
 }
 
+build::prepare_rootfs() {
+    if [ -d "$ROOTFS_DIR" ]; then
+        # Check for mounted filesystems and FAIL IMMEDIATELY
+        mountpoints_found=0
+        for mp in dev dev/pts dev/shm proc sys; do
+            if mountpoint -q "$ROOTFS_DIR/$mp"; then
+                echo "Error: Mountpoint $ROOTFS_DIR/$mp is still mounted. Please unmount before proceeding." >&2
+                mountpoints_found=1
+            fi
+        done
+        if [ $mountpoints_found -ne 0 ]; then
+            exit 1
+        fi
+        echo "Removing existing rootfs at $ROOTFS_DIR..."
+        rm -rf "$ROOTFS_DIR"
+    fi
+    mkdir -p "$(dirname "$ROOTFS_DIR")"
+    echo "Created rootfs directory at $ROOTFS_DIR"
+}
+
 build::install_binfmt(){
     # Detect wsl using wslinfo
     if command -v wslinfo >/dev/null 2>&1 && wslinfo --networking-mode; then
