@@ -90,4 +90,12 @@ chmod 0644 "$MFILE" || true
 
 # for compatibility with legacy dbus users
 mkdir -p "$(dirname "$DBUSFILE")"
-cp -f "$MFILE" "$DBUSFILE" || true
+# Skip if the file links to /etc/machine-id
+if [ -L "$DBUSFILE" ] && [ "$(readlink -f "$DBUSFILE")" = "$MFILE" ]; then
+    return 0
+else
+    # remove existing file if any
+    rm -f "$DBUSFILE"
+fi
+
+ln -s "$MFILE" "$DBUSFILE"
