@@ -2,8 +2,13 @@
 set -e
 
 # Create necessary directories
-mkdir -p /tmp /var/tmp /run /var/run /var/lock
+mkdir -p /tmp /var/tmp /run /var/run
 chmod 1777 /tmp /var/tmp
+
+# create /var/lock only if there is no file/link or dir with this name
+if [ ! -f /var/lock ] && [ ! -L /var/lock ] && [ ! -d /var/lock ]; then
+    mkdir -p /var/lock
+fi
 
 # Create /run/shm symlink
 ln -sf /dev/shm /run/shm 2>/dev/null || true

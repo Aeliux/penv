@@ -70,7 +70,7 @@ build::prepare_rootfs() {
         rm -rf "$ROOTFS_DIR"
     fi
     mkdir -p "$(dirname "$ROOTFS_DIR")"
-    echo "Created rootfs directory at $ROOTFS_DIR"
+    echo "Created rootfs parent directory at $(dirname "$ROOTFS_DIR")"
 }
 
 build::install_binfmt(){
@@ -90,11 +90,20 @@ build::install_binfmt(){
 # Usage: build::chroot [command...]
 build::chroot() {
     local cmd=("$@")
-    startup=("/bin/sh" -- "/penv/startup.sh")
+    if [ -f "$ROOTFS_DIR/penv/startup.sh" ]; then
+        startup=("/bin/sh" -- "/penv/startup.sh")
+    fi
+
     if [ "${#cmd[@]}" -eq 0 ]; then
-        cmd=("${startup[@]}")
+        if [ -n "${startup:-}" ]; then
+            cmd=("${startup[@]}")
+        else
+            cmd=("/bin/sh")
+        fi
     else
-        cmd=("${startup[@]}" "${cmd[@]}")
+        if [ -n "${startup:-}" ]; then
+            cmd=("${startup[@]}" "${cmd[@]}")
+        fi
     fi
     
     local mounted_dev=0
