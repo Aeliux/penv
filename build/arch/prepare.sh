@@ -29,4 +29,5 @@ pacstrap -c /mnt \
     unzip \
     inetutils \
     diffutils \
-    dash
+    dash \
+    binutils

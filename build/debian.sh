@@ -22,7 +22,7 @@ DISTRO_RELEASE="${DISTRO_RELEASE:-}"
 readonly DISTRO_ARCH="${DISTRO_ARCH:-amd64}"
 MIRROR="${MIRROR:-}"
 
-ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,iputils-ping,nano,ed,xz-utils,bzip2,zip,unzip,${ADDITIONAL_PACKAGES:-}"
+ADDITIONAL_PACKAGES="ca-certificates,file,curl,wget,gpg,less,iproute2,procps,iputils-ping,nano,ed,xz-utils,bzip2,zip,unzip,binutils,${ADDITIONAL_PACKAGES:-}"
 
 # Distro configuration map
 case "$DISTRO" in
