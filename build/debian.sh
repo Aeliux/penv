@@ -59,7 +59,7 @@ readonly ROOTFS_DIR="${ROOTFS_DIR:-/tmp/penv/$$/${DISTRO}-${DISTRO_RELEASE}-${DI
 # Source build library
 . build/core/build.sh
 
-readonly PACKAGE_VERSION="2.1.1"
+readonly PACKAGE_VERSION="2.1.2"
 readonly OUTPUT_FILE="${OUTPUT_FILE:-output/${DISTRO}-${DISTRO_RELEASE}-${DISTRO_ARCH}-${PACKAGE_VERSION}-rootfs.tar.gz}"
 
 echo "Building ${DISTRO^} ${DISTRO_RELEASE} (${DISTRO_ARCH}) v$PACKAGE_VERSION rootfs..."

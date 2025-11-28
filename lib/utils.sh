@@ -325,7 +325,6 @@ compare_versions() {
   ver2="${ver2_parts[*]}"
   ver1=${ver1// /./}
   ver2=${ver2// /./}
-  echo "Comparing versions: $ver1 vs $ver2"
 
   # Compare using sort -V
   local sorted_versions
