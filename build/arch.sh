@@ -86,7 +86,7 @@ build::finalize || { echo "Error: build::finalize failed" >&2; exit 1; }
 # Create archive
 echo "Creating tar.gz archive..."
 mkdir -p "$(dirname "$OUTPUT_FILE")"
-tar -czf --numeric-owner "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
+tar --numeric-owner -czf "$OUTPUT_FILE" -C "$ROOTFS_DIR" .
 chmod 644 "$OUTPUT_FILE"
 
 # Cleanup
