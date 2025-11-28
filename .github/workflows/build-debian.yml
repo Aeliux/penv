@@ -1,4 +1,4 @@
-name: Build debian-based rootfs Images
+name: Build debian-based rootfs archives
 
 on:
   push:
@@ -85,7 +85,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-rootfs
+          name: ${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-${{ steps.release_tag.outputs.version }}-rootfs
           path: |
             output/${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-${{ steps.release_tag.outputs.version }}-rootfs.tar.gz
             output/${{ matrix.distro }}-${{ matrix.release.codename }}-${{ matrix.arch }}-${{ steps.release_tag.outputs.version }}-rootfs.tar.gz.sha256
@@ -169,7 +169,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
-          name: Release ${{ steps.release_tag.outputs.tag }}
+          name: Debian/Ubuntu Release ${{ steps.release_tag.outputs.tag }}
           body_path: release_notes.md
           draft: true
           prerelease: false
