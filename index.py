@@ -249,6 +249,18 @@ add_penv_distro(family="debian", distro_base="ubuntu", version="20.04", codename
 add_penv_distro(family="debian", distro_base="ubuntu", version="22.04", codename="jammy", release=release, archs=["amd64", "i386"])
 add_penv_distro(family="debian", distro_base="ubuntu", version="24.04", codename="noble", release=release, archs=["amd64", "i386"], is_latest=True)
 
+release = "2.1.1"
+
+# Debian versions
+add_penv2_distro(family="debian", distro="debian", distro_version="11", distro_codename="bullseye", package_version=release)
+add_penv2_distro(family="debian", distro="debian", distro_version="12", distro_codename="bookworm", package_version=release)
+add_penv2_distro(family="debian", distro="debian", distro_version="13", distro_codename="trixie", package_version=release, is_latest=True)
+
+# Ubuntu versions
+archs = ["amd64", "arm64", "armhf"]
+add_penv2_distro(family="debian", distro="ubuntu", distro_version="20.04", distro_codename="focal", package_version=release, archs=archs)
+add_penv2_distro(family="debian", distro="ubuntu", distro_version="22.04", distro_codename="jammy", package_version=release, archs=archs)
+add_penv2_distro(family="debian", distro="ubuntu", distro_version="24.04", distro_codename="noble", package_version=release, archs=archs, is_latest=True)
 
 if __name__ == "__main__":
     import json

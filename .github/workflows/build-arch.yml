@@ -65,7 +65,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.release_tag.outputs.tag }}
-          name: Arch Linux Release ${{ steps.release_tag.outputs.tag }}
+          name: Arch Linux Release ${{ steps.release_tag.outputs.version }}
           body_path: release_notes.md
           draft: true
           prerelease: false
