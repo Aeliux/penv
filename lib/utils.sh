@@ -342,6 +342,28 @@ compare_versions() {
   fi
 }
 
+safe_rm(){
+  local targets=("$@")
+  for target in "${targets[@]}"; do
+    safe_rm_single "$target" || return 1
+  done
+}
+
+safe_rm_single(){
+  local target="$1"
+  
+  if [[ -z "$target" || "$target" == "/" ]]; then
+    err "Refusing to remove unsafe target: $target"
+    return 1
+  fi
+  
+  # Remove symlinks first to avoid dangling links
+  find "$target" -type l -print0 | xargs -0 --no-run-if-empty rm -f --
+
+  # now remove remaining regular files and directories
+  find "$target" ! -type l -print0 | xargs -0 --no-run-if-empty rm -rf --
+}
+
 # Find available shell in rootfs
 find_shell(){
   local rootfs="$1"

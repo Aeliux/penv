@@ -67,7 +67,7 @@ env::create(){
   mkdir -p "$env_root"
   
   extract_tarball "$distro_file" "$env_root" || {
-    rm -rf "$env_root"
+    safe_rm "$env_root"
     return 1
   }
   
@@ -118,7 +118,6 @@ env::delete(){
   
   if [[ -z "$env_name" ]]; then
     err "Usage: penv delete <name>"
-    info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
   fi
   
@@ -131,7 +130,6 @@ env::delete(){
   
   if [[ ! -d "$env_root" ]]; then
     err "Environment not found: $env_name"
-    info "Use ${C_BOLD}penv list${C_RESET} to see available environments"
     return 2
   fi
   
@@ -144,7 +142,7 @@ env::delete(){
   
   case "$yn" in
     [Yy])
-      rm -rf "$env_root"
+      safe_rm "$env_root"
       msg "Deleted: $env_name"
       ;;
     *)
@@ -173,7 +171,7 @@ env::delete_all(){
   
   case "$yn" in
     [Yy])
-      rm -rf "${ENVS_DIR:?}/"*
+      safe_rm "$ENVS_DIR"/*
       msg "Deleted all environments"
       ;;
     *)

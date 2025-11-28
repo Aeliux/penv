@@ -71,14 +71,14 @@ distro::import(){
   test_dir=$(mktemp -d)
   
   if ! tar -tzf "$tarball_path" >/dev/null 2>&1; then
-    rm -rf "$test_dir"
+    safe_rm "$test_dir"
     err "Invalid tarball format or corrupted file"
     return 1
   fi
   
   # Extract to test directory to verify it's a valid rootfs
   if ! extract_tarball "$tarball_path" "$test_dir"; then
-    rm -rf "$test_dir"
+    safe_rm "$test_dir"
     err "Failed to extract tarball"
     return 1
   fi
@@ -93,7 +93,7 @@ distro::import(){
   done
   
   if [[ "$has_rootfs_structure" == "false" ]]; then
-    rm -rf "$test_dir"
+    safe_rm "$test_dir"
     err "Tarball does not appear to contain a valid rootfs structure"
     info "Expected at least one of: bin, usr, etc, lib, sbin"
     return 1
@@ -111,7 +111,7 @@ distro::import(){
     fi
     
     if [[ -z "$family" ]]; then
-      rm -rf "$test_dir"
+      safe_rm "$test_dir"
       err "Could not detect distro family"
       info "Family not found in /penv/metadata/family"
       info "Please specify family: ${C_BOLD}penv import $distro_id $tarball_path -f <family>${C_RESET}"
@@ -123,7 +123,7 @@ distro::import(){
   fi
   
   # Clean up test extraction
-  rm -rf "$test_dir"
+  safe_rm "$test_dir"
   
   # Copy tarball to cache with distro ID name
   local cache_file="$CACHE_DIR/${distro_id}.tar.gz"
@@ -275,7 +275,6 @@ distro::modify(){
   exists=$(jq -r ".distros[\"$new_id\"] // empty" "$LOCAL_INDEX" 2>/dev/null)
   if [[ -n "$exists" ]]; then
     err "Distro ID already exists: $new_id"
-    info "Use a different ID or remove existing: ${C_BOLD}penv rm -d $new_id${C_RESET}"
     return 1
   fi
   
@@ -365,7 +364,7 @@ distro::apply_addons_and_shell(){
   # Extract original
   info "Extracting base distro..."
   extract_tarball "$source_tarball" "$temp_root" || {
-    rm -rf "$temp_root"
+    safe_rm "$temp_root"
     err "Failed to extract base distro"
     return 1
   }
@@ -437,7 +436,7 @@ distro::apply_addons_and_shell(){
     echo
     
     if ! launch_shell "$temp_root"; then
-      rm -rf "$temp_root"
+      safe_rm "$temp_root"
       err "Failed to launch shell"
       return 1
     fi
@@ -448,13 +447,13 @@ distro::apply_addons_and_shell(){
   
   # Compress modified rootfs
   compress_tarball "$temp_root" "$output_file" || {
-    rm -rf "$temp_root"
+    safe_rm "$temp_root"
     err "Failed to compress modified distro"
     return 1
   }
   
   # Cleanup
-  rm -rf "$temp_root"
+  safe_rm "$temp_root"
   
   return 0
 }
@@ -471,7 +470,7 @@ distro::shell_and_pack(){
   # Extract original
   info "Extracting base distro..."
   extract_tarball "$source_tarball" "$temp_root" || {
-    rm -rf "$temp_root"
+    safe_rm "$temp_root"
     err "Failed to extract base distro"
     return 1
   }
@@ -491,7 +490,7 @@ distro::shell_and_pack(){
     echo
     
     if ! launch_shell "$temp_root"; then
-      rm -rf "$temp_root"
+      safe_rm "$temp_root"
       err "Failed to launch shell"
       return 1
     fi
@@ -502,13 +501,13 @@ distro::shell_and_pack(){
   
   # Compress modified rootfs
   compress_tarball "$temp_root" "$output_file" || {
-    rm -rf "$temp_root"
+    safe_rm "$temp_root"
     err "Failed to compress modified distro"
     return 1
   }
   
   # Cleanup
-  rm -rf "$temp_root"
+  safe_rm "$temp_root"
   
   return 0
 }
@@ -681,7 +680,7 @@ distro::clean_all(){
   
   case "$yn" in
     [Yy])
-      rm -rf "${CACHE_DIR:?}/"*
+      rm -f "${CACHE_DIR:?}/"*
       echo '{"distros":{}}' > "$LOCAL_INDEX"
       msg "Cache cleared"
       ;;
