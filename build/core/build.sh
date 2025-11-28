@@ -19,6 +19,8 @@ for _required_var in FAMILY DISTRO ROOTFS_DIR; do
 done
 unset _required_var
 
+OVERLAYS=(universal "$FAMILY")
+
 # Create a directory structure with multiple paths
 _create_directories() {
     for dir in "$@"; do
@@ -210,6 +212,30 @@ build::chroot_script() {
     return 0
 }
 
+build::apply_overlay() {
+    local overlay_dir="$script_dir/build/$1/overlay"
+    
+    if [ ! -d "$overlay_dir" ]; then
+        echo "Error: Overlay directory not found: $overlay_dir" >&2
+        return 1
+    fi
+
+    if ! cp -a "$overlay_dir/." "$ROOTFS_DIR/"; then
+        echo "Error: Failed to apply overlay from $overlay_dir" >&2
+        return 1
+    fi
+    
+    # Verify copy
+    echo "Verifying overlay files from $overlay_dir..."
+    find "$overlay_dir" -type f | while read -r file; do
+        relative_path="${file#$overlay_dir/}"
+        if [ ! -e "$ROOTFS_DIR/$relative_path" ]; then
+            echo "Error: Overlay file missing in rootfs: $relative_path" >&2
+            return 1
+        fi
+    done
+}
+
 # Main setup function
 build::setup() {
     if [ "$#" -ne 0 ]; then
@@ -227,28 +253,12 @@ build::setup() {
     # Write metadata
     _write_metadata
     
-    # Apply overlays to rootfs recursively
-    echo "Applying overlays..."
-    #run it for both universal and $FAMILY overlays
-    for overlay in "universal" "$FAMILY"; do
-        overlay_dir="$script_dir/build/$overlay/overlay"
-        if [ -d "$overlay_dir" ]; then
-            if ! cp -a "$overlay_dir/." "$ROOTFS_DIR/"; then
-                echo "Error: Failed to apply overlay from $overlay_dir" >&2
-                return 1
-            fi
-            # Verify copy
-            echo "Verifying overlay files from $overlay_dir..."
-            find "$overlay_dir" -type f | while read -r file; do
-                relative_path="${file#$overlay_dir/}"
-                if [ ! -e "$ROOTFS_DIR/$relative_path" ]; then
-                    echo "Error: Overlay file missing in rootfs: $relative_path" >&2
-                    return 1
-                fi
-            done
-        fi
+    # Apply overlays
+    for overlay in "${OVERLAYS[@]}"; do
+        echo "Applying overlay: $overlay"
+        build::apply_overlay "$overlay" || { echo "Error: Failed to apply overlay $overlay" >&2; return 1; }
     done
-    
+
     # Set up root user
     echo "Setting up root user..."
     cp -a "$ROOTFS_DIR/etc/skel/." "$ROOTFS_DIR/root/"

@@ -36,6 +36,8 @@ foreign_arch=0
 if [ "$HOST_ARCH" != "$DISTRO_ARCH" ]; then
     echo "Detected foreign architecture build: host=$HOST_ARCH, target=$DISTRO_ARCH"
     build::install_binfmt || { echo "Error: build::install_binfmt failed" >&2; exit 1; }
+
+    # shellcheck disable=SC2034
     foreign_arch=1
 fi
 
@@ -57,15 +59,12 @@ tar -I zstd -xf "$ARCH_TARBALL" -C "$ROOTFS_DIR" --strip-components=1 "root.${AR
 # Setup bootstrap rootfs
 echo "Setting up Arch Linux bootstrap rootfs..."
 cp /etc/resolv.conf "$ROOTFS_DIR/etc/resolv.conf"
-# Setup pacman servers
-cat > "$ROOTFS_DIR/etc/pacman.d/mirrorlist" <<EOF
-Server = https://mirror.rackspace.com/archlinux/\$repo/os/\$arch
-Server = https://mirror.archlinux32.org/\$repo/os/\$arch
-Server = https://mirrors.kernel.org/archlinux/\$repo/os/\$arch
-EOF
+
+build::apply_overlay "arch"
 
 cache_dir="/var/cache/penv/$DISTRO/$DISTRO_ARCH"
 mkdir -p "$cache_dir"
+
 mkdir -p "$ROOTFS_DIR/var/cache/pacman/pkg"
 mount --bind "$cache_dir" "$ROOTFS_DIR/var/cache/pacman/pkg"
 chown -R 0:0 "$cache_dir"
@@ -74,12 +73,11 @@ chmod -R 0755 "$cache_dir"
 build::chroot_script "build/arch/prepare.sh"
 umount "$ROOTFS_DIR/var/cache/pacman/pkg"
 
-cp "$ROOTFS_DIR/rootfs.tar.gz" "$ROOTFS_DIR/.."
-tar_path=$(realpath "$ROOTFS_DIR/../rootfs.tar.gz")
+# move rootfs/mnt to a temporary location before removing rootfs
+temp_mnt="$(realpath "$ROOTFS_DIR/../mnt_temp")"
+mv "$ROOTFS_DIR/mnt" "$temp_mnt"
 build::prepare_rootfs
-mkdir -p "$ROOTFS_DIR"
-tar -xzf "$tar_path" -C "$ROOTFS_DIR"
-rm "$tar_path"
+mv "$temp_mnt" "$ROOTFS_DIR"
 
 # Setup and finalize
 build::setup || { echo "Error: build::setup failed" >&2; exit 1; }

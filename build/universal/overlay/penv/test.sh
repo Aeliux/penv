@@ -35,7 +35,7 @@ SKIPPED_TESTS=""
 
 # Test result functions
 test_start() {
-    local name="$1"
+    name="$1"
     CURRENT_TEST="$name"
     TESTS_TOTAL=$((TESTS_TOTAL + 1))
     printf "${C_BLUE}[TEST]${C_RESET} %-50s " "$name"
@@ -43,33 +43,33 @@ test_start() {
 
 test_pass() {
     TESTS_PASSED=$((TESTS_PASSED + 1))
-    echo "${C_GREEN}✓ PASS${C_RESET}"
+    printf "${C_GREEN}✓ PASS${C_RESET}\n"
 }
 
 test_fail() {
-    local reason="$1"
+    reason="$1"
     TESTS_FAILED=$((TESTS_FAILED + 1))
-    echo "${C_RED}✗ FAIL${C_RESET}"
+    printf "${C_RED}✗ FAIL${C_RESET}\n"
     if [ -n "$reason" ]; then
-        echo "${C_RED}       └─ $reason${C_RESET}"
+        printf "${C_RED}       └─ %s${C_RESET}\n" "$reason"
     fi
     FAILED_TESTS="${FAILED_TESTS}${CURRENT_TEST}: ${reason}\n"
 }
 
 test_skip() {
-    local reason="$1"
+    reason="$1"
     TESTS_SKIPPED=$((TESTS_SKIPPED + 1))
-    echo "${C_YELLOW}⊘ SKIP${C_RESET}"
+    printf "${C_YELLOW}⊘ SKIP${C_RESET}\n"
     if [ -n "$reason" ]; then
-        echo "${C_YELLOW}       └─ $reason${C_RESET}"
+        printf "${C_YELLOW}       └─ %s${C_RESET}\n" "$reason"
     fi
     SKIPPED_TESTS="${SKIPPED_TESTS}${CURRENT_TEST}: ${reason}\n"
 }
 
 # Helper to run a test command
 run_test() {
-    local output
-    local exit_code
+    output=""
+    exit_code=0
     
     output=$("$@" 2>&1) || exit_code=$?
     exit_code=${exit_code:-0}
@@ -84,85 +84,85 @@ run_test() {
 
 # Test file existence
 test_file_exists() {
-    local file="$1"
+    file="$1"
     [ -f "$file" ]
 }
 
 # Test directory existence
 test_dir_exists() {
-    local dir="$1"
+    dir="$1"
     [ -d "$dir" ]
 }
 
 # Test command availability
 test_command_exists() {
-    local cmd="$1"
+    cmd="$1"
     command -v "$cmd" >/dev/null 2>&1
 }
 
 # Test executable permission
 test_executable() {
-    local file="$1"
+    file="$1"
     [ -x "$file" ]
 }
 
 # Test symlink
 test_symlink() {
-    local link="$1"
+    link="$1"
     [ -L "$link" ]
 }
 
 # Header function
 print_header() {
-    echo ""
-    echo "${C_BOLD}${C_CYAN}========================================${C_RESET}"
-    echo "${C_BOLD}${C_CYAN}$1${C_RESET}"
-    echo "${C_BOLD}${C_CYAN}========================================${C_RESET}"
-    echo ""
+    printf "\n"
+    printf "${C_BOLD}${C_CYAN}========================================${C_RESET}\n"
+    printf "${C_BOLD}${C_CYAN}%s${C_RESET}\n" "$1"
+    printf "${C_BOLD}${C_CYAN}========================================${C_RESET}\n"
+    printf "\n"
 }
 
 # Print summary
 print_summary() {
-    echo ""
-    echo "${C_BOLD}${C_CYAN}========================================${C_RESET}"
-    echo "${C_BOLD}${C_CYAN}TEST SUMMARY${C_RESET}"
-    echo "${C_BOLD}${C_CYAN}========================================${C_RESET}"
-    echo ""
+    printf "\n"
+    printf "${C_BOLD}${C_CYAN}========================================${C_RESET}\n"
+    printf "${C_BOLD}${C_CYAN}TEST SUMMARY${C_RESET}\n"
+    printf "${C_BOLD}${C_CYAN}========================================${C_RESET}\n"
+    printf "\n"
     echo "Total Tests:   $TESTS_TOTAL"
-    echo "${C_GREEN}Passed:        $TESTS_PASSED${C_RESET}"
-    echo "${C_RED}Failed:        $TESTS_FAILED${C_RESET}"
-    echo "${C_YELLOW}Skipped:       $TESTS_SKIPPED${C_RESET}"
-    echo ""
+    printf "${C_GREEN}Passed:        %s${C_RESET}\n" "$TESTS_PASSED"
+    printf "${C_RED}Failed:        %s${C_RESET}\n" "$TESTS_FAILED"
+    printf "${C_YELLOW}Skipped:       %s${C_RESET}\n" "$TESTS_SKIPPED"
+    printf "\n"
     
     if [ $TESTS_FAILED -gt 0 ] || [ $TESTS_SKIPPED -gt 0 ]; then
         if [ $TESTS_SKIPPED -gt 0 ]; then
-            echo "${C_BOLD}${C_YELLOW}SKIPPED TESTS:${C_RESET}"
-            echo "${C_YELLOW}----------------------------------------${C_RESET}"
+            printf "${C_BOLD}${C_YELLOW}SKIPPED TESTS:${C_RESET}\n"
+            printf "${C_YELLOW}----------------------------------------${C_RESET}\n"
             printf "${C_YELLOW}%b${C_RESET}" "$SKIPPED_TESTS"
-            echo "${C_YELLOW}----------------------------------------${C_RESET}"
-            echo ""
+            printf "${C_YELLOW}----------------------------------------${C_RESET}\n"
+            printf "\n"
         fi
         
         if [ $TESTS_FAILED -gt 0 ]; then
-            echo "${C_BOLD}${C_RED}FAILED TESTS:${C_RESET}"
-            echo "${C_RED}----------------------------------------${C_RESET}"
+            printf "${C_BOLD}${C_RED}FAILED TESTS:${C_RESET}\n"
+            printf "${C_RED}----------------------------------------${C_RESET}\n"
             printf "${C_RED}%b${C_RESET}" "$FAILED_TESTS"
-            echo "${C_RED}----------------------------------------${C_RESET}"
-            echo ""
+            printf "${C_RED}----------------------------------------${C_RESET}\n"
+            printf "\n"
         fi
     fi
     
     if [ $TESTS_FAILED -gt 0 ]; then
-        echo "${C_BOLD}${C_RED}SOME TESTS FAILED!${C_RESET}"
-        echo ""
+        printf "${C_BOLD}${C_RED}SOME TESTS FAILED!${C_RESET}\n"
+        printf "\n"
         return 2
     elif [ $TESTS_SKIPPED -gt 0 ]; then
-        echo "${C_BOLD}${C_YELLOW}SOME TESTS WERE SKIPPED!${C_RESET}"
-        echo ""
+        printf "${C_BOLD}${C_YELLOW}SOME TESTS WERE SKIPPED!${C_RESET}\n"
+        printf "\n"
         return 1
     else
-        echo "${C_BOLD}${C_GREEN}ALL TESTS PASSED!${C_RESET}"
-        echo ""
+        printf "${C_BOLD}${C_GREEN}ALL TESTS PASSED!${C_RESET}\n"
+        printf "\n"
         return 0
     fi
 }
@@ -172,12 +172,12 @@ main() {
     print_header "penv rootfs Test Suite"
     
     # Display environment info
-    echo "${C_CYAN}Environment Information:${C_RESET}"
+    printf "${C_CYAN}Environment Information:${C_RESET}\n"
     echo "  Penv Version:    ${PENV_VERSION:-unknown}"
     echo "  Distro:          ${PENV_METADATA_DISTRO:-unknown}"
     echo "  Family:          ${PENV_METADATA_FAMILY:-unknown}"
     echo "  Timestamp:       ${PENV_METADATA_TIMESTAMP:-unknown}"
-    echo ""
+    printf "\n"
     
     # Run universal tests
     if [ -d /penv/test.d ]; then
@@ -188,12 +188,12 @@ main() {
                 
                 # Source the test file to run its tests
                 . "$test_file" || true
-                echo ""
+                printf "\n"
             fi
         done
     else
-        echo "${C_YELLOW}Warning: /penv/test.d directory not found${C_RESET}"
-        echo ""
+        printf "${C_YELLOW}Warning: /penv/test.d directory not found${C_RESET}\n"
+        printf "\n"
     fi
     
     # Print final summary
