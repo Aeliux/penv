@@ -345,23 +345,61 @@ compare_versions() {
 safe_rm(){
   local targets=("$@")
   for target in "${targets[@]}"; do
-    safe_rm_single "$target" || return 1
+    if [[ -d "$target" ]]; then
+      safe_rm_dir "$target"
+    elif [[ -f "$target" || -L "$target" ]]; then
+      rm -f "$target"
+    else
+      warn "Refusing to remove unsafe target: $target"
+    fi
   done
 }
 
-safe_rm_single(){
-  local target="$1"
-  
+safe_rm_dir(){
+  local target
+
+  target="$1"
+
+  # Basic sanity checks
   if [[ -z "$target" || "$target" == "/" ]]; then
-    err "Refusing to remove unsafe target: $target"
+    echo "Refusing to remove unsafe target: '$target'"
     return 1
   fi
-  
-  # Remove symlinks first to avoid dangling links
-  find "$target" -type l -print0 | xargs -0 --no-run-if-empty rm -f --
+  if [[ ! -e "$target" ]]; then
+    echo "Target does not exist: '$target'"
+    return 1
+  fi
+  if [[ ! -d "$target" ]]; then
+    echo "Target is not a directory: '$target'"
+    return 1
+  fi
+  if [[ -L "$target" ]]; then
+    echo "Refusing to operate on symlink target: '$target'"
+    return 1
+  fi
 
-  # now remove remaining regular files and directories
-  find "$target" ! -type l -print0 | xargs -0 --no-run-if-empty rm -rf --
+  # If chattr exists, try to clear immutable flags for everything under target
+  if command -v chattr >/dev/null 2>&1; then
+    # run in batches
+    find "$target" -mindepth 1 -exec chattr -i {} + 2>/dev/null || true
+  fi
+
+  # depth-first not required for chmod, but safe
+  find "$target" -mindepth 1 -type d -exec chmod u+rwx -- {} + 2>/dev/null || true
+
+  find "$target" -mindepth 1 -type l -exec rm -f -- {} + 2>/dev/null || true
+
+  find "$target" -mindepth 1 -type f -exec chmod u+w -- {} + 2>/dev/null || true
+  find "$target" -mindepth 1 -type f -exec rm -f -- {} + 2>/dev/null || true
+
+  find "$target" -mindepth 1 -type d -depth -exec chmod u+rwx -- {} + 2>/dev/null || true
+  find "$target" -mindepth 1 -type d -depth -exec rmdir -- {} + 2>/dev/null || true
+
+  find "$target" -mindepth 1 -exec rm -rf -- {} + 2>/dev/null || true
+
+  rmdir -- "$target"
+
+  return 0
 }
 
 # Find available shell in rootfs

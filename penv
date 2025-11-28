@@ -8,7 +8,7 @@ IFS=$'\n\t'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
 
-CLIENT_VERSION="2.2.0"          # Current client version
+CLIENT_VERSION="2.2.1"          # Current client version
 CLIENT_COMPATIBILITY_MAX="2.2.0" # Maximum compatible version (2.1.x)
 
 # Source configurations
