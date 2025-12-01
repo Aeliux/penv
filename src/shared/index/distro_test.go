@@ -1,4 +1,4 @@
-package distro
+package index
 
 import (
 	"testing"
@@ -45,7 +45,7 @@ func TestFromJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d, err := FromJSON([]byte(tt.jsonStr))
+			d, err := DistroFromJson([]byte(tt.jsonStr))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FromJSON() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -68,7 +68,7 @@ func TestDistro_ToJSON(t *testing.T) {
 		DistroCodename: "focal",
 	}
 
-	data, err := d.ToJSON()
+	data, err := d.ToJson()
 	if err != nil {
 		t.Errorf("ToJSON() error = %v", err)
 		return

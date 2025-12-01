@@ -1,4 +1,4 @@
-package distro
+package index
 
 import (
 	"encoding/json"
@@ -16,8 +16,8 @@ type Distro struct {
 	DistroCodename string           `json:"distro_codename"`
 }
 
-// ToJSON serializes a Distro struct to JSON bytes.
-func (d *Distro) ToJSON() ([]byte, error) {
+// ToJson serializes a Distro struct to JSON bytes.
+func (d *Distro) ToJson() ([]byte, error) {
 	return json.Marshal(d)
 }
 
@@ -26,8 +26,8 @@ func (d *Distro) IsCompatible(versionConstraints version.Constraints) bool {
 	return versionConstraints.Check(d.Version)
 }
 
-// FromJSON parses a JSON byte slice into a Distro struct.
-func FromJSON(data []byte) (*Distro, error) {
+// DistroFromJson parses a JSON byte slice into a Distro struct.
+func DistroFromJson(data []byte) (*Distro, error) {
 	distro := &Distro{}
 	err := json.Unmarshal(data, distro)
 	if err != nil {
