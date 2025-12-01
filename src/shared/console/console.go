@@ -3,22 +3,22 @@ package console
 // ConsolePrinter defines UI methods libraries can call.
 // Implementations can be simple (Printf/Info/Error) or complex (Progress, Table).
 type ConsolePrinter interface {
-	Info(format string, a ...interface{})
-	Warn(format string, a ...interface{})
-	Error(format string, a ...interface{})
-	Success(format string, a ...interface{})
-	Printf(format string, a ...interface{})
+	Info(format string, a ...any)
+	Warn(format string, a ...any)
+	Error(format string, a ...any)
+	Success(format string, a ...any)
+	Printf(format string, a ...any)
 	// Optionally add progress/spinner/table methods as needed
 }
 
 // default no-op console that discards everything
 type noopConsole struct{}
 
-func (noopConsole) Info(string, ...interface{})    {}
-func (noopConsole) Warn(string, ...interface{})    {}
-func (noopConsole) Error(string, ...interface{})   {}
-func (noopConsole) Success(string, ...interface{}) {}
-func (noopConsole) Printf(string, ...interface{})  {}
+func (noopConsole) Info(string, ...any)    {}
+func (noopConsole) Warn(string, ...any)    {}
+func (noopConsole) Error(string, ...any)   {}
+func (noopConsole) Success(string, ...any) {}
+func (noopConsole) Printf(string, ...any)  {}
 
 // Out is the console used by libraries. Default is no-op.
 // Main app calls Set(...) to enable a real console implementation.
