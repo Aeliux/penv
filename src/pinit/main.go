@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/aeliux/penv/pkg/distro"
+	"penv/shared/distro"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/aeliux/penv
+module penv
 
 go 1.25.4
 
