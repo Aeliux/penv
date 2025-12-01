@@ -1,4 +1,4 @@
-package common
+package distro
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/go-version"
 )
 
+// Distro represents a Linux distribution with its metadata and version information.
 type Distro struct {
 	Family         string           `json:"family"`
 	Name           string           `json:"name"`
@@ -15,16 +16,18 @@ type Distro struct {
 	DistroCodename string           `json:"distro_codename"`
 }
 
-func (d *Distro) ToJson() ([]byte, error) {
+// ToJSON serializes a Distro struct to JSON bytes.
+func (d *Distro) ToJSON() ([]byte, error) {
 	return json.Marshal(d)
 }
 
+// IsCompatible checks if the distro version satisfies the given version constraints.
 func (d *Distro) IsCompatible(versionConstraints version.Constraints) bool {
 	return versionConstraints.Check(d.Version)
 }
 
-// GetDistroFromJSON parses a JSON byte slice into a Distro struct.
-func GetDistroFromJSON(data []byte) (*Distro, error) {
+// FromJSON parses a JSON byte slice into a Distro struct.
+func FromJSON(data []byte) (*Distro, error) {
 	distro := &Distro{}
 	err := json.Unmarshal(data, distro)
 	if err != nil {
