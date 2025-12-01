@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
 	"penv/shared/proc"
@@ -34,7 +35,7 @@ var runCmd = &cli.Command{
 		timeout := cmd.Int("timeout")
 
 		eInst := proc.GetCmd(executable, args[1:], map[string]string{}, nil, nil, nil)
-		go proc.StartProcess(eInst, func(err error) {
+		go proc.StartProcess(eInst, func(cmd *exec.Cmd, err error) {
 			if err != nil {
 				fmt.Println("Error:", err)
 			} else {
@@ -43,7 +44,19 @@ var runCmd = &cli.Command{
 		})
 		// Wait for a moment to ensure the process has started
 		time.Sleep(500 * time.Millisecond)
-		proc.RunningPids.KillProcess(eInst.Process.Pid, timeout)
+		go func() {
+			i := 0
+			for {
+				i++
+				fmt.Println("Process running...")
+				time.Sleep(1 * time.Second)
+				if i == 3 {
+					proc.RunningPids.KillProcess(eInst.Process.Pid, timeout)
+					fmt.Println("Sent sighup signal to process")
+				}
+			}
+		}()
+		eInst.Wait()
 		fmt.Println("Process finished")
 		return nil
 	},

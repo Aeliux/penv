@@ -50,8 +50,8 @@ func (r *RunningPidsCollection) KillProcess(pid int, timeoutSeconds int) error {
 		return err
 	}
 
-	// Send SIGINT to allow graceful shutdown
-	err = process.Signal(syscall.SIGINT)
+	// Send SIGHUP to allow graceful shutdown
+	err = process.Signal(syscall.SIGHUP)
 	if err != nil {
 		return err
 	}
@@ -147,10 +147,10 @@ func GetCmd(executable string, args []string, envVars map[string]string, stdin *
 // It also tracks the process ID in the RunningPids collection.
 // Note: The exitCallback is called in the same goroutine that waits for the process to exit.
 // Invoke StartProcess in a separate goroutine if non-blocking behavior is desired.
-func StartProcess(cmd *exec.Cmd, exitCallback func(error)) {
+func StartProcess(cmd *exec.Cmd, exitCallback func(*exec.Cmd, error)) {
 	err := cmd.Start()
 	if err != nil {
-		exitCallback(err)
+		exitCallback(cmd, err)
 		return
 	}
 
@@ -159,5 +159,5 @@ func StartProcess(cmd *exec.Cmd, exitCallback func(error)) {
 
 	// TODO: Remove pid from collection
 
-	exitCallback(err)
+	exitCallback(cmd, err)
 }

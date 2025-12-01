@@ -4,6 +4,9 @@ import "os"
 
 type Environments map[string]string
 
+// EnvironmentVariables holds the environment variables for child processes.
+// It is initialized with the current process's environment variables.
+// It's dedicated from os.Environ to allow modifications without affecting the parent process.
 var EnvironmentVariables = Environments{}
 
 func (e *Environments) Set(key, value string) {
@@ -27,9 +30,9 @@ func (e *Environments) ToSlice() []string {
 	return envSlice
 }
 
-// initEnvironment initializes the EnvironmentVariables map with the current
+// ResetEnvironments initializes the EnvironmentVariables map with the current
 // process's environment variables.
-func initEnvironment() {
+func ResetEnvironments() {
 	for _, env := range os.Environ() {
 		// Split environment variable into key and value
 		for i := 0; i < len(env); i++ {

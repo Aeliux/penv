@@ -1,5 +1,7 @@
 package shared
 
+import "penv/shared/proc"
+
 func init() {
-	initenvironment()
+	proc.ResetEnvironments()
 }
