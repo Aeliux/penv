@@ -204,9 +204,8 @@ func (e *Executor) executeHook(hook *Hook) error {
 	return nil
 }
 
-// buildHookEnv creates environment variables for hook execution
-// These are process-specific and don't affect proc.EnvironmentVariables
-func (e *Executor) buildHookEnv(hook *Hook) map[string]string {
+// createCommand creates a configured exec.Cmd for a hook
+func (e *Executor) createCommand(hook *Hook, command string, args []string) *exec.Cmd {
 	env := make(map[string]string)
 
 	// Copy hook's run-only environment variables and expand them
@@ -222,13 +221,40 @@ func (e *Executor) buildHookEnv(hook *Hook) map[string]string {
 		})
 	}
 
-	// Add PINIT_HOOK_* variables
+	// Add PINIT_HOOK variables
 	env["PINIT_HOOK"] = hook.Name
 	env["PINIT_HOOK_PATH"] = hook.FilePath
 	env["PINIT_HOOK_MODE"] = string(e.mode)
 	env["PINIT_HOOK_TRIGGER"] = string(e.trigger)
 
-	return env
+	cmd := proc.GetCmd(command, args, env, nil, nil, nil)
+
+	// Set working directory
+	workDir := hook.WorkDir
+	if workDir == "" {
+		workDir = e.defaultWorkDir
+	}
+	cmd.Dir = workDir
+
+	return cmd
+}
+
+// runCommandWithWait executes a command and waits for completion, checking success codes
+func (e *Executor) runCommandWithWait(cmd *exec.Cmd, hook *Hook, cmdDescription string) (int, error) {
+	logger.S.Debugf("Running %s for hook '%s' (workdir: %s)", cmdDescription, hook.Name, cmd.Dir)
+
+	if err := cmd.Run(); err != nil {
+		if cmd.ProcessState != nil {
+			exitCode := cmd.ProcessState.ExitCode()
+			if !e.isSuccessCode(hook, exitCode) {
+				return exitCode, fmt.Errorf("%s exited with non-success code: %d", cmdDescription, exitCode)
+			}
+		} else {
+			return -1, fmt.Errorf("%s failed: %w", cmdDescription, err)
+		}
+	}
+
+	return 0, nil
 }
 
 // executeCommand executes a command hook
@@ -239,30 +265,8 @@ func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) (int, er
 		return -1, fmt.Errorf("empty command")
 	}
 
-	cmd := proc.GetCmd(parts[0], parts[1:], e.buildHookEnv(hook), nil, nil, nil)
-
-	// Set working directory
-	workDir := hook.WorkDir
-	if workDir == "" {
-		workDir = e.defaultWorkDir
-	}
-	cmd.Dir = workDir
-
-	logger.S.Debugf("Running command: %s (workdir: %s)", hook.Command, workDir)
-
-	// Run command and wait for completion
-	if err := cmd.Run(); err != nil {
-		if cmd.ProcessState != nil {
-			exitCode := cmd.ProcessState.ExitCode()
-			if !e.isSuccessCode(hook, exitCode) {
-				return exitCode, fmt.Errorf("command exited with non-success code: %d", exitCode)
-			}
-		} else {
-			return -1, fmt.Errorf("command failed: %w", err)
-		}
-	}
-
-	return 0, nil
+	cmd := e.createCommand(hook, parts[0], parts[1:])
+	return e.runCommandWithWait(cmd, hook, "command")
 }
 
 // executeShell executes a shell script hook
@@ -276,31 +280,8 @@ func (e *Executor) executeShell(hook *Hook, execution *HookExecution) (int, erro
 	}
 	defer os.Remove(scriptPath)
 
-	// Execute the script
-	cmd := proc.GetCmd(scriptPath, []string{}, e.buildHookEnv(hook), nil, nil, nil)
-
-	// Set working directory
-	workDir := hook.WorkDir
-	if workDir == "" {
-		workDir = e.defaultWorkDir
-	}
-	cmd.Dir = workDir
-
-	logger.S.Debugf("Running shell script for hook: %s (workdir: %s)", hook.Name, workDir)
-
-	// Run script and wait for completion
-	if err := cmd.Run(); err != nil {
-		if cmd.ProcessState != nil {
-			exitCode := cmd.ProcessState.ExitCode()
-			if !e.isSuccessCode(hook, exitCode) {
-				return exitCode, fmt.Errorf("shell script exited with non-success code: %d", exitCode)
-			}
-		} else {
-			return -1, fmt.Errorf("shell script failed: %w", err)
-		}
-	}
-
-	return 0, nil
+	cmd := e.createCommand(hook, scriptPath, []string{})
+	return e.runCommandWithWait(cmd, hook, "shell script")
 }
 
 // executeService starts a service hook
@@ -311,16 +292,9 @@ func (e *Executor) executeService(hook *Hook, execution *HookExecution) (int, er
 		return -1, fmt.Errorf("empty service command")
 	}
 
-	cmd := proc.GetCmd(parts[0], parts[1:], e.buildHookEnv(hook), nil, nil, nil)
+	cmd := e.createCommand(hook, parts[0], parts[1:])
 
-	// Set working directory
-	workDir := hook.WorkDir
-	if workDir == "" {
-		workDir = e.defaultWorkDir
-	}
-	cmd.Dir = workDir
-
-	logger.S.Infof("Starting service: %s (workdir: %s)", hook.Service, workDir)
+	logger.S.Infof("Starting service: %s (workdir: %s)", hook.Service, cmd.Dir)
 
 	// Start the service process
 	serviceState := &ServiceState{
@@ -401,7 +375,7 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState) {
 
 		// Create a new command for the restart
 		parts := strings.Fields(state.Hook.Service)
-		cmd = proc.GetCmd(parts[0], parts[1:], e.buildHookEnv(state.Hook), nil, nil, nil)
+		cmd = e.createCommand(state.Hook, parts[0], parts[1:])
 		cmd.Dir = state.Hook.WorkDir
 		if cmd.Dir == "" {
 			cmd.Dir = "/"
