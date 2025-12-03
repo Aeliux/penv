@@ -179,25 +179,3 @@ func (m *Manager) GetMode() ExecutionMode {
 func (m *Manager) ValidateHooks() error {
 	return m.allHooks.Validate()
 }
-
-// PrintHookSummary logs a summary of all loaded hooks
-func (m *Manager) PrintHookSummary() {
-	hooks := m.allHooks.GetAllHooks()
-
-	logger.S.Infof("=== Hook Summary ===")
-	logger.S.Infof("Total hooks loaded: %d", len(hooks))
-	logger.S.Infof("Current mode: %s", m.mode)
-
-	for _, hook := range hooks {
-		logger.S.Infof("  - %s: %s", hook.Name, hook.Description)
-		if len(hook.Requires) > 0 {
-			logger.S.Debugf("    Requires: %v", hook.Requires)
-		}
-		if len(hook.Modes) > 0 {
-			logger.S.Debugf("    Modes: %v", hook.Modes)
-		}
-		if len(hook.Triggers) > 0 {
-			logger.S.Debugf("    Triggers: %v", hook.Triggers)
-		}
-	}
-}

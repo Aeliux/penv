@@ -179,13 +179,13 @@ func (e *Executor) executeHook(hook *Hook) error {
 	var exCode int
 	switch hook.RunType {
 	case RunTypeCommand:
-		err, exCode = e.executeCommand(hook, execution)
+		exCode, err = e.executeCommand(hook, execution)
 	case RunTypeShell:
-		err, exCode = e.executeShell(hook, execution)
+		exCode, err = e.executeShell(hook, execution)
 	case RunTypeService:
-		err, exCode = e.executeService(hook, execution)
+		exCode, err = e.executeService(hook, execution)
 	default:
-		err = fmt.Errorf("unknown run type: %s", hook.RunType)
+		exCode, err = -1, fmt.Errorf("unknown run type: %s", hook.RunType)
 	}
 
 	execution.EndTime = time.Now()
@@ -232,11 +232,11 @@ func (e *Executor) buildHookEnv(hook *Hook) map[string]string {
 }
 
 // executeCommand executes a command hook
-func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) (error, int) {
+func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) (int, error) {
 	// Parse command and arguments
 	parts := strings.Fields(hook.Command)
 	if len(parts) == 0 {
-		return fmt.Errorf("empty command"), -1
+		return -1, fmt.Errorf("empty command")
 	}
 
 	cmd := proc.GetCmd(parts[0], parts[1:], e.buildHookEnv(hook), nil, nil, nil)
@@ -255,24 +255,24 @@ func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) (error, 
 		if cmd.ProcessState != nil {
 			exitCode := cmd.ProcessState.ExitCode()
 			if !e.isSuccessCode(hook, exitCode) {
-				return fmt.Errorf("command exited with non-success code: %d", exitCode), exitCode
+				return exitCode, fmt.Errorf("command exited with non-success code: %d", exitCode)
 			}
 		} else {
-			return fmt.Errorf("command failed: %w", err), -1
+			return -1, fmt.Errorf("command failed: %w", err)
 		}
 	}
 
-	return nil, 0
+	return 0, nil
 }
 
 // executeShell executes a shell script hook
-func (e *Executor) executeShell(hook *Hook, execution *HookExecution) (error, int) {
+func (e *Executor) executeShell(hook *Hook, execution *HookExecution) (int, error) {
 	// Create a temporary script file
 	tmpDir := os.TempDir()
 	scriptPath := filepath.Join(tmpDir, fmt.Sprintf("hook-%s-%d.sh", hook.Name, time.Now().UnixNano()))
 
 	if err := os.WriteFile(scriptPath, []byte(hook.Shell), 0755); err != nil {
-		return fmt.Errorf("failed to create script file: %w", err), -1
+		return -1, fmt.Errorf("failed to create script file: %w", err)
 	}
 	defer os.Remove(scriptPath)
 
@@ -293,22 +293,22 @@ func (e *Executor) executeShell(hook *Hook, execution *HookExecution) (error, in
 		if cmd.ProcessState != nil {
 			exitCode := cmd.ProcessState.ExitCode()
 			if !e.isSuccessCode(hook, exitCode) {
-				return fmt.Errorf("shell script exited with non-success code: %d", exitCode), exitCode
+				return exitCode, fmt.Errorf("shell script exited with non-success code: %d", exitCode)
 			}
 		} else {
-			return fmt.Errorf("shell script failed: %w", err), -1
+			return -1, fmt.Errorf("shell script failed: %w", err)
 		}
 	}
 
-	return nil, 0
+	return 0, nil
 }
 
 // executeService starts a service hook
-func (e *Executor) executeService(hook *Hook, execution *HookExecution) (error, int) {
+func (e *Executor) executeService(hook *Hook, execution *HookExecution) (int, error) {
 	// Parse service command and arguments
 	parts := strings.Fields(hook.Service)
 	if len(parts) == 0 {
-		return fmt.Errorf("empty service command"), -1
+		return -1, fmt.Errorf("empty service command")
 	}
 
 	cmd := proc.GetCmd(parts[0], parts[1:], e.buildHookEnv(hook), nil, nil, nil)
@@ -337,13 +337,13 @@ func (e *Executor) executeService(hook *Hook, execution *HookExecution) (error, 
 
 	// Check if service is still running
 	if !serviceState.Active {
-		return fmt.Errorf("service failed to start"), -1
+		return -1, fmt.Errorf("service failed to start")
 	}
 
 	e.setService(hook.Name, serviceState)
 	execution.PID = serviceState.PID
 
-	return nil, 0
+	return 0, nil
 }
 
 // manageService handles service lifecycle including restarts

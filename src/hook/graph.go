@@ -2,6 +2,7 @@ package hook
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -169,11 +170,8 @@ func (g *DependencyGraph) FilterByMode(mode ExecutionMode) *DependencyGraph {
 		}
 
 		// Check if hook supports this mode
-		for _, m := range hook.Modes {
-			if m == modeStr {
-				filtered.hooks[name] = hook
-				break
-			}
+		if slices.Contains(hook.Modes, modeStr) {
+			filtered.hooks[name] = hook
 		}
 	}
 
