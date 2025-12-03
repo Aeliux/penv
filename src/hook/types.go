@@ -23,6 +23,11 @@ const (
 	RunTypeService RunType = "service"
 )
 
+type EnvVariable struct {
+	Key   string
+	Value string
+}
+
 // Hook represents a parsed hook configuration
 type Hook struct {
 	// Metadata
@@ -45,8 +50,8 @@ type Hook struct {
 	WorkDir string // Working directory
 
 	// Environment variables
-	PersistentEnv map[string]string // [env] - Updates proc.EnvironmentVariables, affects all future processes
-	RunEnv        map[string]string // [run.env] - Only for this hook's execution
+	PersistentEnv []EnvVariable // [env] - Updates proc.EnvironmentVariables, affects all future processes
+	RunEnv        []EnvVariable // [run.env] - Only for this hook's execution
 
 	// Service options
 	Restart      bool  // Whether to restart service if it fails

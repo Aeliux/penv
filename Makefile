@@ -34,7 +34,7 @@ install: ## Install client to $PREFIX/bin
 
 test: ## Run tests
 	@echo "Running tests..."
-	$(GO) test -v -race penv/...
+	$(GO) test -v -race -shuffle=on -count=1 -failfast penv/...
 	@echo "Tests passed"
 
 coverage: ## Run tests with coverage

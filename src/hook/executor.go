@@ -141,14 +141,14 @@ func (e *Executor) executeHook(hook *Hook) error {
 	if len(hook.PersistentEnv) > 0 {
 		logger.S.Debugf("Applying %d persistent environment variables from hook '%s'", len(hook.PersistentEnv), hook.Name)
 
-		for key, value := range hook.PersistentEnv {
-			expandedValue := os.Expand(value, func(varName string) string {
+		for _, envVar := range hook.PersistentEnv {
+			expandedValue := os.Expand(envVar.Value, func(varName string) string {
 				val, _ := proc.EnvironmentVariables.Get(varName)
 				return val
 			})
 
-			proc.EnvironmentVariables.Set(key, expandedValue)
-			logger.S.Infof("Set persistent env var: %s=%s", key, expandedValue)
+			proc.EnvironmentVariables.Set(envVar.Key, expandedValue)
+			logger.S.Infof("Set persistent env var: %s=%s", envVar.Key, expandedValue)
 		}
 	}
 
@@ -210,8 +210,8 @@ func (e *Executor) buildHookEnv(hook *Hook) map[string]string {
 	env := make(map[string]string)
 
 	// Copy hook's run-only environment variables and expand them
-	for key, value := range hook.RunEnv {
-		env[key] = os.Expand(value, func(varName string) string {
+	for _, envVar := range hook.RunEnv {
+		env[envVar.Key] = os.Expand(envVar.Value, func(varName string) string {
 			// First check in our local env map
 			if val, exists := env[varName]; exists {
 				return val

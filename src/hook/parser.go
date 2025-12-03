@@ -29,8 +29,8 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 
 	hook := &Hook{
 		FilePath:      filePath,
-		PersistentEnv: make(map[string]string),
-		RunEnv:        make(map[string]string),
+		PersistentEnv: []EnvVariable{},
+		RunEnv:        []EnvVariable{},
 		SuccessCodes:  []int{0},
 	}
 
@@ -110,13 +110,21 @@ func (p *Parser) parseKeyValue(hook *Hook, section, key, value string) error {
 	case "hook":
 		return p.parseHookSection(hook, key, value)
 	case "env":
-		hook.PersistentEnv[key] = value
+		pair := EnvVariable{
+			Key:   key,
+			Value: value,
+		}
+		hook.PersistentEnv = append(hook.PersistentEnv, pair)
 	case "run":
 		return p.parseRunSection(hook, key, value)
 	case "run.options":
 		return p.parseRunOptionsSection(hook, key, value)
 	case "run.env":
-		hook.RunEnv[key] = value
+		pair := EnvVariable{
+			Key:   key,
+			Value: value,
+		}
+		hook.RunEnv = append(hook.RunEnv, pair)
 	case "run.service":
 		return p.parseRunServiceSection(hook, key, value)
 	}

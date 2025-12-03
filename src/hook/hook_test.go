@@ -54,13 +54,44 @@ workdir=/tmp
 	}
 
 	// Test persistent env
-	if h.PersistentEnv["PERSIST_VAR"] != "persistent_value" {
-		t.Errorf("Expected PERSIST_VAR='persistent_value', got '%s'", h.PersistentEnv["PERSIST_VAR"])
+	if len(h.PersistentEnv) != 2 {
+		t.Errorf("Expected 2 persistent env vars, got %d", len(h.PersistentEnv))
+	}
+
+	for _, envVar := range h.PersistentEnv {
+		if envVar.Key == "PERSIST_VAR" && envVar.Value != "persistent_value" {
+			t.Errorf("Expected PERSIST_VAR='persistent_value', got '%s'", envVar.Value)
+		}
+		if envVar.Key == "APP_PATH" && envVar.Value != "$HOME/app" {
+			t.Errorf("Expected APP_PATH='$HOME/app', got '%s'", envVar.Value)
+		}
 	}
 
 	// Test run env
-	if h.RunEnv["RUN_VAR"] != "run_value" {
-		t.Errorf("Expected RUN_VAR='run_value', got '%s'", h.RunEnv["RUN_VAR"])
+	if len(h.RunEnv) != 2 {
+		t.Errorf("Expected 2 run env vars, got %d", len(h.RunEnv))
+	}
+
+	for _, envVar := range h.RunEnv {
+		if envVar.Key == "RUN_VAR" && envVar.Value != "run_value" {
+			t.Errorf("Expected RUN_VAR='run_value', got '%s'", envVar.Value)
+		}
+		if envVar.Key == "TEMP_PATH" && envVar.Value != "/tmp/test" {
+			t.Errorf("Expected TEMP_PATH='/tmp/test', got '%s'", envVar.Value)
+		}
+	}
+
+	// Test command
+	if h.RunType != RunTypeCommand {
+		t.Errorf("Expected RunType 'command', got '%s'", h.RunType)
+	}
+	if h.Command != "echo test" {
+		t.Errorf("Expected command 'echo test', got '%s'", h.Command)
+	}
+
+	// Test workdir
+	if h.WorkDir != "/tmp" {
+		t.Errorf("Expected workdir '/tmp', got '%s'", h.WorkDir)
 	}
 }
 
