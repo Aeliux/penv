@@ -13,7 +13,6 @@ type Manager struct {
 	mode           ExecutionMode
 	allHooks       *DependencyGraph
 	parser         *Parser
-	executor       *Executor
 	defaultWorkDir string
 }
 
@@ -65,8 +64,8 @@ func (m *Manager) loadHooks(dir string) error {
 	return nil
 }
 
-// ExecuteTrigger executes all hooks for a given trigger
-func (m *Manager) ExecuteTrigger(trigger Trigger) error {
+// ExecuteTrigger executes all hooks for a given trigger and returns the executor
+func (m *Manager) ExecuteTrigger(trigger Trigger) (*Executor, error) {
 	logger.S.Infof("Executing trigger: %s (mode: %s)", trigger, m.mode)
 
 	// Filter hooks by trigger (mode already filtered during parsing)
@@ -75,7 +74,7 @@ func (m *Manager) ExecuteTrigger(trigger Trigger) error {
 	hooks := filtered.GetAllHooks()
 	if len(hooks) == 0 {
 		logger.S.Infof("No hooks to execute for trigger '%s'", trigger)
-		return nil
+		return nil, nil
 	}
 
 	logger.S.Infof("Found %d hook(s) for trigger '%s'", len(hooks), trigger)
@@ -83,55 +82,19 @@ func (m *Manager) ExecuteTrigger(trigger Trigger) error {
 	// Get execution order
 	batches, err := filtered.TopologicalSort()
 	if err != nil {
-		return fmt.Errorf("failed to sort hooks: %w", err)
+		return nil, fmt.Errorf("failed to sort hooks: %w", err)
 	}
 
 	logger.S.Infof("Execution plan: %d batch(es)", len(batches))
 
 	// Create executor and execute batches
-	m.executor = NewExecutor(filtered, m.defaultWorkDir, m.mode, trigger)
-	if err := m.executor.ExecuteBatches(batches); err != nil {
-		return fmt.Errorf("hook execution failed: %w", err)
+	executor := NewExecutor(filtered, m.defaultWorkDir, m.mode, trigger)
+	if err := executor.ExecuteBatches(batches); err != nil {
+		return executor, fmt.Errorf("hook execution failed: %w", err)
 	}
 
 	logger.S.Infof("Trigger '%s' completed successfully", trigger)
-	return nil
-}
-
-// StopAllServices stops all running services
-func (m *Manager) StopAllServices(timeout int) error {
-	if m.executor == nil {
-		return nil
-	}
-
-	return m.executor.StopAllServices(timeout)
-}
-
-// GetActiveServices returns all currently active services
-func (m *Manager) GetActiveServices() []*ServiceState {
-	if m.executor == nil {
-		return []*ServiceState{}
-	}
-
-	return m.executor.GetAllServices()
-}
-
-// GetHookExecution returns the execution state of a specific hook
-func (m *Manager) GetHookExecution(hookName string) (*HookExecution, bool) {
-	if m.executor == nil {
-		return nil, false
-	}
-
-	return m.executor.GetExecution(hookName)
-}
-
-// GetAllExecutions returns all hook execution states
-func (m *Manager) GetAllExecutions() map[string]*HookExecution {
-	if m.executor == nil {
-		return make(map[string]*HookExecution)
-	}
-
-	return m.executor.GetAllExecutions()
+	return executor, nil
 }
 
 // GetAllHooks returns all loaded hooks

@@ -146,12 +146,15 @@ exit 49"""
 
 	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
-	err := manager.ExecuteTrigger(Trigger("start"))
+	executor, err := manager.ExecuteTrigger(Trigger("start"))
 	if err == nil {
 		t.Fatal("Expected error from shell hook execution, got nil")
 	}
+	if executor == nil {
+		t.Fatal("Expected executor to be returned even on error")
+	}
 
-	exec, exists := manager.GetHookExecution("shell-hook")
+	exec, exists := executor.GetExecution("shell-hook")
 	if !exists {
 		t.Fatal("Shell hook execution not tracked")
 	}

@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"penv/shared/logger"
@@ -20,8 +19,6 @@ type Executor struct {
 	graph          *DependencyGraph
 	executions     map[string]*HookExecution
 	executionsMux  sync.RWMutex
-	services       map[string]*ServiceState
-	servicesMux    sync.RWMutex
 	defaultWorkDir string
 	mode           ExecutionMode
 	trigger        Trigger
@@ -36,7 +33,6 @@ func NewExecutor(graph *DependencyGraph, defaultWorkDir string, mode ExecutionMo
 	return &Executor{
 		graph:          graph,
 		executions:     make(map[string]*HookExecution),
-		services:       make(map[string]*ServiceState),
 		defaultWorkDir: defaultWorkDir,
 		mode:           mode,
 		trigger:        trigger,
@@ -286,6 +282,14 @@ func (e *Executor) executeShell(hook *Hook, execution *HookExecution) (int, erro
 
 // executeService starts a service hook
 func (e *Executor) executeService(hook *Hook, execution *HookExecution) (int, error) {
+	// Check if service is already running globally
+	if existing, exists := GetGlobalService(hook.Name); exists {
+		pid := existing.GetPID()
+		logger.S.Infof("Service '%s' already running with PID %d, skipping start", hook.Name, pid)
+		execution.PID = pid
+		return 0, nil
+	}
+
 	// Parse service command and arguments
 	parts := strings.Fields(hook.Service)
 	if len(parts) == 0 {
@@ -300,40 +304,59 @@ func (e *Executor) executeService(hook *Hook, execution *HookExecution) (int, er
 	serviceState := &ServiceState{
 		Hook:      hook,
 		StartTime: time.Now(),
-		Active:    true,
 	}
+	serviceState.SetActive(true)
+
+	// Channel to communicate startup status
+	startupDone := make(chan error, 1)
 
 	// Start process in background with restart handling
-	go e.manageService(cmd, serviceState)
+	go e.manageService(cmd, serviceState, startupDone)
 
-	// Give the service a moment to start
-	time.Sleep(100 * time.Millisecond)
-
-	// Check if service is still running
-	if !serviceState.Active {
-		return -1, fmt.Errorf("service failed to start")
+	// Wait for startup to complete or fail
+	select {
+	case err := <-startupDone:
+		if err != nil {
+			return -1, err
+		}
+		// Startup successful, register the service
+		RegisterGlobalService(hook.Name, serviceState)
+		execution.PID = serviceState.GetPID()
+		return 0, nil
+	case <-time.After(5 * time.Second):
+		// Timeout waiting for service to start
+		serviceState.SetActive(false)
+		return -1, fmt.Errorf("timeout waiting for service to start")
 	}
-
-	e.setService(hook.Name, serviceState)
-	execution.PID = serviceState.PID
-
-	return 0, nil
 }
 
 // manageService handles service lifecycle including restarts
-func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState) {
+func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState, startupDone chan error) {
+	firstStart := true
 	for {
 		err := cmd.Start()
 		if err != nil {
 			logger.S.Errorf("Service '%s' failed to start: %v", state.Hook.Name, err)
-			state.Active = false
+			state.SetActive(false)
+			if firstStart {
+				startupDone <- fmt.Errorf("service failed to start: %w", err)
+			}
 			return
 		}
 
-		state.PID = cmd.Process.Pid
-		proc.RunningPids.AddProcess(cmd.Process)
+		state.SetPID(cmd.Process.Pid)
+		// Only add to RunningPids on first start (RegisterGlobalService already added it)
+		if !firstStart {
+			proc.RunningPids.AddProcess(cmd.Process)
+		}
 
-		logger.S.Infof("Service '%s' started with PID %d", state.Hook.Name, state.PID)
+		// Signal successful startup on first start
+		if firstStart {
+			firstStart = false
+			startupDone <- nil
+		}
+
+		logger.S.Infof("Service '%s' started with PID %d", state.Hook.Name, state.GetPID())
 
 		// Wait for process to exit
 		cmd.Wait()
@@ -343,32 +366,36 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState) {
 			exitCode = cmd.ProcessState.ExitCode()
 		}
 
-		logger.S.Warnf("Service '%s' (PID %d) exited with code %d", state.Hook.Name, state.PID, exitCode)
+		logger.S.Warnf("Service '%s' (PID %d) exited with code %d", state.Hook.Name, state.GetPID(), exitCode)
 
 		// Check if exit code is considered success
 		if e.isSuccessCode(state.Hook, exitCode) {
 			logger.S.Infof("Service '%s' exited successfully", state.Hook.Name)
-			state.Active = false
+			state.SetActive(false)
+			UnregisterGlobalService(state.Hook.Name)
 			return
 		}
 
 		// Check if restart is enabled
 		if !state.Hook.Restart {
 			logger.S.Errorf("Service '%s' failed and restart is disabled", state.Hook.Name)
-			state.Active = false
+			state.SetActive(false)
+			UnregisterGlobalService(state.Hook.Name)
 			return
 		}
 
 		// Check restart limit
-		if state.Restarts >= 10 {
-			logger.S.Errorf("Service '%s' reached maximum restart attempts (%d), not restarting", state.Hook.Name, state.Restarts)
-			state.Active = false
+		restarts := state.GetRestarts()
+		if restarts >= 10 {
+			logger.S.Errorf("Service '%s' reached maximum restart attempts (%d), not restarting", state.Hook.Name, restarts)
+			state.SetActive(false)
+			UnregisterGlobalService(state.Hook.Name)
 			return
 		}
 
 		// Restart the service
-		state.Restarts++
-		logger.S.Infof("Restarting service '%s' (restart #%d)", state.Hook.Name, state.Restarts)
+		restarts = state.IncrementRestarts()
+		logger.S.Infof("Restarting service '%s' (restart #%d)", state.Hook.Name, restarts)
 
 		// Wait a bit before restarting to avoid rapid restart loops
 		time.Sleep(1 * time.Second)
@@ -386,69 +413,6 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState) {
 // isSuccessCode checks if an exit code is considered successful
 func (e *Executor) isSuccessCode(hook *Hook, code int) bool {
 	return slices.Contains(hook.SuccessCodes, code)
-}
-
-// StopAllServices gracefully stops all running services
-func (e *Executor) StopAllServices(timeout int) error {
-	e.servicesMux.RLock()
-	services := make([]*ServiceState, 0, len(e.services))
-	for _, service := range e.services {
-		if service.Active {
-			services = append(services, service)
-		}
-	}
-	e.servicesMux.RUnlock()
-
-	logger.S.Infof("Stopping %d service(s)", len(services))
-
-	for _, service := range services {
-		if err := e.stopService(service, timeout); err != nil {
-			logger.S.Errorf("Failed to stop service '%s': %v", service.Hook.Name, err)
-		}
-	}
-
-	return nil
-}
-
-// stopService stops a single service
-func (e *Executor) stopService(service *ServiceState, timeout int) error {
-	if !service.Active || service.PID == 0 {
-		return nil
-	}
-
-	logger.S.Infof("Stopping service '%s' (PID %d)", service.Hook.Name, service.PID)
-
-	process, err := os.FindProcess(service.PID)
-	if err != nil {
-		return fmt.Errorf("failed to find process: %w", err)
-	}
-
-	// Send SIGTERM for graceful shutdown
-	if err := process.Signal(syscall.SIGTERM); err != nil {
-		return fmt.Errorf("failed to send SIGTERM: %w", err)
-	}
-
-	// Wait for process to exit
-	done := make(chan error, 1)
-	go func() {
-		_, err := process.Wait()
-		done <- err
-	}()
-
-	select {
-	case <-done:
-		logger.S.Infof("Service '%s' stopped gracefully", service.Hook.Name)
-		service.Active = false
-		return nil
-	case <-time.After(time.Duration(timeout) * time.Second):
-		// Timeout exceeded, force kill
-		logger.S.Warnf("Service '%s' did not stop gracefully, force killing", service.Hook.Name)
-		if err := process.Kill(); err != nil {
-			return fmt.Errorf("failed to kill process: %w", err)
-		}
-		service.Active = false
-		return nil
-	}
 }
 
 // GetExecution retrieves the execution state of a hook
@@ -476,33 +440,4 @@ func (e *Executor) setExecution(hookName string, execution *HookExecution) {
 	e.executionsMux.Lock()
 	defer e.executionsMux.Unlock()
 	e.executions[hookName] = execution
-}
-
-// GetService retrieves a service state
-func (e *Executor) GetService(hookName string) (*ServiceState, bool) {
-	e.servicesMux.RLock()
-	defer e.servicesMux.RUnlock()
-	service, exists := e.services[hookName]
-	return service, exists
-}
-
-// setService sets a service state
-func (e *Executor) setService(hookName string, service *ServiceState) {
-	e.servicesMux.Lock()
-	defer e.servicesMux.Unlock()
-	e.services[hookName] = service
-}
-
-// GetAllServices returns all active services
-func (e *Executor) GetAllServices() []*ServiceState {
-	e.servicesMux.RLock()
-	defer e.servicesMux.RUnlock()
-
-	services := make([]*ServiceState, 0, len(e.services))
-	for _, service := range e.services {
-		if service.Active {
-			services = append(services, service)
-		}
-	}
-	return services
 }

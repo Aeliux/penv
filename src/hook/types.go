@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"sync"
 	"time"
 
 	"github.com/hashicorp/go-version"
@@ -76,6 +77,8 @@ const (
 type HookExecution struct {
 	Hook         *Hook
 	Status       ExecutionStatus
+	Mode         ExecutionMode
+	Trigger      Trigger
 	StartTime    time.Time
 	EndTime      time.Time
 	Error        error
@@ -88,8 +91,47 @@ type HookExecution struct {
 // ServiceState tracks a running service
 type ServiceState struct {
 	Hook      *Hook
-	PID       int
+	pid       int
 	StartTime time.Time
-	Restarts  int
-	Active    bool
+	restarts  int
+	active    bool
+	mux       sync.RWMutex // Protects all fields for concurrent access
+}
+
+// Thread-safe getters and setters
+func (s *ServiceState) GetPID() int {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	return s.pid
+}
+
+func (s *ServiceState) SetPID(pid int) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.pid = pid
+}
+
+func (s *ServiceState) GetActive() bool {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	return s.active
+}
+
+func (s *ServiceState) SetActive(active bool) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.active = active
+}
+
+func (s *ServiceState) GetRestarts() int {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	return s.restarts
+}
+
+func (s *ServiceState) IncrementRestarts() int {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.restarts++
+	return s.restarts
 }

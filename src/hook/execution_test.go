@@ -33,7 +33,7 @@ TEST_PATH=/opt/test
 
 	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
-	if err := manager.ExecuteTrigger(Trigger("start")); err != nil {
+	if _, err := manager.ExecuteTrigger(Trigger("start")); err != nil {
 		t.Fatalf("Failed to execute trigger: %v", err)
 	}
 
@@ -187,12 +187,13 @@ ENV_ONLY_VAR=env_only_value
 
 	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
-	if err := manager.ExecuteTrigger(Trigger("start")); err != nil {
+	executor, err := manager.ExecuteTrigger(Trigger("start"))
+	if err != nil {
 		t.Fatalf("Env-only hook should not error: %v", err)
 	}
 
 	// Check execution status
-	exec, exists := manager.GetHookExecution("env-only-hook")
+	exec, exists := executor.GetExecution("env-only-hook")
 	if !exists {
 		t.Fatal("Env-only hook execution not tracked")
 	}
@@ -307,13 +308,16 @@ command=echo test
 
 	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
-	err := manager.ExecuteTrigger(Trigger("start"))
+	executor, err := manager.ExecuteTrigger(Trigger("start"))
 	if err == nil {
 		t.Error("Expected error due to failing hook")
 	}
+	if executor == nil {
+		t.Fatal("Expected executor even on error")
+	}
 
 	// Base env hook should complete
-	exec, exists := manager.GetHookExecution("base-env")
+	exec, exists := executor.GetExecution("base-env")
 	if !exists {
 		t.Fatal("base-env execution not found")
 	}
@@ -322,7 +326,7 @@ command=echo test
 	}
 
 	// Failing hook should fail
-	exec, exists = manager.GetHookExecution("failing")
+	exec, exists = executor.GetExecution("failing")
 	if !exists {
 		t.Fatal("failing execution not found")
 	}
@@ -331,11 +335,11 @@ command=echo test
 	}
 
 	// Dependent hook should be skipped
-	_, exists = manager.GetHookExecution("dependent")
+	_, exists = executor.GetExecution("dependent")
 	if !exists {
 		t.Fatal("dependent execution not found")
 	}
-	exec, _ = manager.GetHookExecution("dependent")
+	exec, _ = executor.GetExecution("dependent")
 	if exec.Status != StatusSkipped {
 		t.Errorf("Expected dependent to be skipped, got %s", exec.Status)
 	}
