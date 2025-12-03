@@ -85,7 +85,6 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 		if currentSection == "run" && key == "shell" && strings.HasPrefix(value, `"`) && !strings.HasSuffix(value, `"`) {
 			inShellScript = true
 			shellLines = append(shellLines, strings.TrimPrefix(value, `"`))
-			continue
 		}
 
 		if err := p.parseKeyValue(hook, currentSection, key, value); err != nil {

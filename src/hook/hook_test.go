@@ -95,6 +95,44 @@ GLOBAL_VAR=global_value
 	}
 }
 
+func TestShellHook(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	hookContent := `[hook]
+name=shell-hook
+modes=test
+triggers=start
+
+[run]
+shell="#!/bin/bash
+exit 49"
+`
+
+	hookFile := filepath.Join(tmpDir, "shell-hook.hook")
+	if err := os.WriteFile(hookFile, []byte(hookContent), 0644); err != nil {
+		t.Fatalf("Failed to create hook file: %v", err)
+	}
+
+	manager := NewManager(ExecutionMode("test"), tmpDir)
+	manager.LoadHooksFromDirectory(tmpDir)
+
+	err := manager.ExecuteTrigger(Trigger("start"))
+	if err == nil {
+		t.Fatal("Expected error from shell hook execution, got nil")
+	}
+
+	exec, exists := manager.GetHookExecution("shell-hook")
+	if !exists {
+		t.Fatal("Shell hook execution not tracked")
+	}
+	if exec.Status != StatusFailed {
+		t.Errorf("Expected status failed, got %s", exec.Status)
+	}
+	if exec.ExitCode != 49 {
+		t.Errorf("Expected exit code 49, got %d", exec.ExitCode)
+	}
+}
+
 func TestDependencyGraph(t *testing.T) {
 	graph := NewDependencyGraph()
 

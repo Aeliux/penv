@@ -10,25 +10,9 @@ import (
 // It's a flexible string type - you can use any mode name you want
 type ExecutionMode string
 
-// Common mode constants (you can use any string as mode)
-const (
-	ModeEnvironment ExecutionMode = "environment"
-	ModeBuild       ExecutionMode = "build"
-	ModeTest        ExecutionMode = "test"
-	ModePrepare     ExecutionMode = "prepare"
-)
-
 // Trigger represents when a hook should be executed
 // It's a flexible string type - you can use any trigger name you want
 type Trigger string
-
-// Common trigger constants (you can use any string as trigger)
-const (
-	TriggerStart   Trigger = "start"
-	TriggerExit    Trigger = "exit"
-	TriggerReload  Trigger = "reload"
-	TriggerCleanup Trigger = "cleanup"
-)
 
 // RunType indicates what type of execution the hook performs
 type RunType string
@@ -91,6 +75,7 @@ type HookExecution struct {
 	EndTime      time.Time
 	Error        error
 	PID          int                        // For service hooks
+	ExitCode     int                        // Exit code of the hook process
 	SkipReason   string                     // Reason why hook was skipped
 	Dependencies map[string]ExecutionStatus // Status of dependencies
 }

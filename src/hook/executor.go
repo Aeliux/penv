@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -195,13 +196,14 @@ func (e *Executor) executeHook(hook *Hook) error {
 	logger.S.Infof("Executing hook: %s", hook.Name)
 
 	var err error
+	var exCode int
 	switch hook.RunType {
 	case RunTypeCommand:
-		err = e.executeCommand(hook, execution)
+		err, exCode = e.executeCommand(hook, execution)
 	case RunTypeShell:
-		err = e.executeShell(hook, execution)
+		err, exCode = e.executeShell(hook, execution)
 	case RunTypeService:
-		err = e.executeService(hook, execution)
+		err, exCode = e.executeService(hook, execution)
 	default:
 		err = fmt.Errorf("unknown run type: %s", hook.RunType)
 	}
@@ -210,6 +212,7 @@ func (e *Executor) executeHook(hook *Hook) error {
 	if err != nil {
 		execution.Status = StatusFailed
 		execution.Error = err
+		execution.ExitCode = exCode
 		logger.S.Errorf("Hook '%s' failed: %v", hook.Name, err)
 		return err
 	}
@@ -241,11 +244,11 @@ func (e *Executor) buildHookEnv(hook *Hook) map[string]string {
 }
 
 // executeCommand executes a command hook
-func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) error {
+func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) (error, int) {
 	// Parse command and arguments
 	parts := strings.Fields(hook.Command)
 	if len(parts) == 0 {
-		return fmt.Errorf("empty command")
+		return fmt.Errorf("empty command"), -1
 	}
 
 	cmd := proc.GetCmd(parts[0], parts[1:], e.buildHookEnv(hook), nil, nil, nil)
@@ -261,33 +264,32 @@ func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) error {
 
 	// Run command and wait for completion
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("command failed: %w", err)
-	}
-
-	// Check exit code
-	if cmd.ProcessState != nil {
-		exitCode := cmd.ProcessState.ExitCode()
-		if !e.isSuccessCode(hook, exitCode) {
-			return fmt.Errorf("command exited with non-success code: %d", exitCode)
+		if cmd.ProcessState != nil {
+			exitCode := cmd.ProcessState.ExitCode()
+			if !e.isSuccessCode(hook, exitCode) {
+				return fmt.Errorf("command exited with non-success code: %d", exitCode), exitCode
+			}
+		} else {
+			return fmt.Errorf("command failed: %w", err), -1
 		}
 	}
 
-	return nil
+	return nil, 0
 }
 
 // executeShell executes a shell script hook
-func (e *Executor) executeShell(hook *Hook, execution *HookExecution) error {
+func (e *Executor) executeShell(hook *Hook, execution *HookExecution) (error, int) {
 	// Create a temporary script file
 	tmpDir := os.TempDir()
 	scriptPath := filepath.Join(tmpDir, fmt.Sprintf("hook-%s-%d.sh", hook.Name, time.Now().UnixNano()))
 
 	if err := os.WriteFile(scriptPath, []byte(hook.Shell), 0755); err != nil {
-		return fmt.Errorf("failed to create script file: %w", err)
+		return fmt.Errorf("failed to create script file: %w", err), -1
 	}
 	defer os.Remove(scriptPath)
 
 	// Execute the script
-	cmd := proc.GetCmd("/bin/sh", []string{scriptPath}, e.buildHookEnv(hook), nil, nil, nil)
+	cmd := proc.GetCmd(scriptPath, []string{}, e.buildHookEnv(hook), nil, nil, nil)
 
 	// Set working directory
 	workDir := hook.WorkDir
@@ -300,26 +302,25 @@ func (e *Executor) executeShell(hook *Hook, execution *HookExecution) error {
 
 	// Run script and wait for completion
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("shell script failed: %w", err)
-	}
-
-	// Check exit code
-	if cmd.ProcessState != nil {
-		exitCode := cmd.ProcessState.ExitCode()
-		if !e.isSuccessCode(hook, exitCode) {
-			return fmt.Errorf("shell script exited with non-success code: %d", exitCode)
+		if cmd.ProcessState != nil {
+			exitCode := cmd.ProcessState.ExitCode()
+			if !e.isSuccessCode(hook, exitCode) {
+				return fmt.Errorf("shell script exited with non-success code: %d", exitCode), exitCode
+			}
+		} else {
+			return fmt.Errorf("shell script failed: %w", err), -1
 		}
 	}
 
-	return nil
+	return nil, 0
 }
 
 // executeService starts a service hook
-func (e *Executor) executeService(hook *Hook, execution *HookExecution) error {
+func (e *Executor) executeService(hook *Hook, execution *HookExecution) (error, int) {
 	// Parse service command and arguments
 	parts := strings.Fields(hook.Service)
 	if len(parts) == 0 {
-		return fmt.Errorf("empty service command")
+		return fmt.Errorf("empty service command"), -1
 	}
 
 	cmd := proc.GetCmd(parts[0], parts[1:], e.buildHookEnv(hook), nil, nil, nil)
@@ -348,13 +349,13 @@ func (e *Executor) executeService(hook *Hook, execution *HookExecution) error {
 
 	// Check if service is still running
 	if !serviceState.Active {
-		return fmt.Errorf("service failed to start")
+		return fmt.Errorf("service failed to start"), -1
 	}
 
 	e.setService(hook.Name, serviceState)
 	execution.PID = serviceState.PID
 
-	return nil
+	return nil, 0
 }
 
 // manageService handles service lifecycle including restarts
@@ -396,6 +397,13 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState) {
 			return
 		}
 
+		// Check restart limit
+		if state.Restarts >= 10 {
+			logger.S.Errorf("Service '%s' reached maximum restart attempts (%d), not restarting", state.Hook.Name, state.Restarts)
+			state.Active = false
+			return
+		}
+
 		// Restart the service
 		state.Restarts++
 		logger.S.Infof("Restarting service '%s' (restart #%d)", state.Hook.Name, state.Restarts)
@@ -415,12 +423,7 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState) {
 
 // isSuccessCode checks if an exit code is considered successful
 func (e *Executor) isSuccessCode(hook *Hook, code int) bool {
-	for _, successCode := range hook.SuccessCodes {
-		if code == successCode {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(hook.SuccessCodes, code)
 }
 
 // StopAllServices gracefully stops all running services
