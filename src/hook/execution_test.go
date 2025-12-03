@@ -15,7 +15,7 @@ func TestPersistentEnvUpdates(t *testing.T) {
 
 	// Reset environment
 	proc.ResetEnvironments()
-	initialCount := len(proc.EnvironmentVariables)
+	initialCount := proc.EnvironmentVariables.Len()
 
 	// Create hook with persistent env
 	hookContent := `[hook]
@@ -56,7 +56,7 @@ TEST_PATH=/opt/test
 	}
 
 	// Verify count increased
-	if len(proc.EnvironmentVariables) <= initialCount {
+	if proc.EnvironmentVariables.Len() <= initialCount {
 		t.Error("proc.EnvironmentVariables count should have increased")
 	}
 }

@@ -2,7 +2,6 @@ package proc
 
 import (
 	"errors"
-	"maps"
 	"os"
 	"os/exec"
 	"syscall"
@@ -113,8 +112,7 @@ func GetCmd(executable string, args []string, envVars map[string]string, stdin *
 
 	// Set up environment variables for the new process
 	// Start with a copy of proc.EnvironmentVariables
-	env := make(Environments)
-	maps.Copy(env, EnvironmentVariables)
+	env := EnvironmentVariables.Copy()
 
 	// Override with provided envVars (these are process-specific)
 	for k, v := range envVars {
@@ -123,24 +121,9 @@ func GetCmd(executable string, args []string, envVars map[string]string, stdin *
 
 	cmd.Env = env.ToSlice()
 
-	// Set the standard input, output, and error to those of the current process if not provided
-	if stdin == nil {
-		cmd.Stdin = os.Stdin
-	} else {
-		cmd.Stdin = stdin
-	}
-
-	if stdout == nil {
-		cmd.Stdout = os.Stdout
-	} else {
-		cmd.Stdout = stdout
-	}
-
-	if stderr == nil {
-		cmd.Stderr = os.Stderr
-	} else {
-		cmd.Stderr = stderr
-	}
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	return cmd
 }

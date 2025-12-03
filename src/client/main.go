@@ -34,7 +34,7 @@ var runCmd = &cli.Command{
 		executable := args[0]
 		timeout := cmd.Int("timeout")
 
-		eInst := proc.GetCmd(executable, args[1:], map[string]string{}, nil, nil, nil)
+		eInst := proc.GetCmd(executable, args[1:], map[string]string{}, os.Stdin, os.Stdout, os.Stderr)
 		go proc.StartProcess(eInst, func(cmd *exec.Cmd, err error) {
 			if err != nil {
 				fmt.Println("Error:", err)
