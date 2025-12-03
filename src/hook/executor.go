@@ -103,14 +103,10 @@ func (e *Executor) executeHook(hook *Hook) error {
 		depExec, exists := e.GetExecution(depName)
 		if !exists {
 			// Dependency not executed yet (shouldn't happen with proper topological sort)
-			execution := &HookExecution{
-				Hook:         hook,
-				Status:       StatusSkipped,
-				StartTime:    time.Now(),
-				EndTime:      time.Now(),
-				SkipReason:   fmt.Sprintf("dependency '%s' not executed", depName),
-				Dependencies: depStatuses,
-			}
+			execution := e.createExecution(hook, StatusSkipped)
+			execution.EndTime = time.Now()
+			execution.SkipReason = fmt.Sprintf("dependency '%s' not executed", depName)
+			execution.Dependencies = depStatuses
 			e.setExecution(hook.Name, execution)
 			logger.S.Warnf("Skipping hook '%s': dependency '%s' not executed", hook.Name, depName)
 			return fmt.Errorf("dependency '%s' not executed", depName)
@@ -120,14 +116,10 @@ func (e *Executor) executeHook(hook *Hook) error {
 
 		// Check if dependency completed successfully
 		if depExec.Status != StatusCompleted {
-			execution := &HookExecution{
-				Hook:         hook,
-				Status:       StatusSkipped,
-				StartTime:    time.Now(),
-				EndTime:      time.Now(),
-				SkipReason:   fmt.Sprintf("dependency '%s' failed with status: %s", depName, depExec.Status),
-				Dependencies: depStatuses,
-			}
+			execution := e.createExecution(hook, StatusSkipped)
+			execution.EndTime = time.Now()
+			execution.SkipReason = fmt.Sprintf("dependency '%s' failed with status: %s", depName, depExec.Status)
+			execution.Dependencies = depStatuses
 			e.setExecution(hook.Name, execution)
 			logger.S.Warnf("Skipping hook '%s': dependency '%s' %s", hook.Name, depName, depExec.Status)
 			return fmt.Errorf("dependency '%s' %s", depName, depExec.Status)
@@ -151,23 +143,14 @@ func (e *Executor) executeHook(hook *Hook) error {
 	// If hook has no run section, it's an env-only hook
 	if hook.RunType == "" {
 		logger.S.Infof("Hook '%s' is env-only (no run section), environment updated", hook.Name)
-		execution := &HookExecution{
-			Hook:      hook,
-			Status:    StatusCompleted,
-			StartTime: time.Now(),
-			EndTime:   time.Now(),
-		}
+		execution := e.createExecution(hook, StatusCompleted)
+		execution.EndTime = time.Now()
 		e.setExecution(hook.Name, execution)
 		return nil
 	}
 
-	execution := &HookExecution{
-		Hook:         hook,
-		Status:       StatusRunning,
-		StartTime:    time.Now(),
-		Dependencies: depStatuses,
-	}
-
+	execution := e.createExecution(hook, StatusRunning)
+	execution.Dependencies = depStatuses
 	e.setExecution(hook.Name, execution)
 	logger.S.Infof("Executing hook: %s", hook.Name)
 
@@ -440,4 +423,15 @@ func (e *Executor) setExecution(hookName string, execution *HookExecution) {
 	e.executionsMux.Lock()
 	defer e.executionsMux.Unlock()
 	e.executions[hookName] = execution
+}
+
+// createExecution creates a base HookExecution with common fields
+func (e *Executor) createExecution(hook *Hook, status ExecutionStatus) *HookExecution {
+	return &HookExecution{
+		Hook:      hook,
+		Status:    status,
+		StartTime: time.Now(),
+		Mode:      e.mode,
+		Trigger:   e.trigger,
+	}
 }
