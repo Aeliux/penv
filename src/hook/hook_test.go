@@ -126,7 +126,7 @@ GLOBAL_VAR=global_value
 	}
 }
 
-func TestShellHook(t *testing.T) {
+func TestShellHookExecution(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	hookContent := `[hook]
@@ -135,8 +135,8 @@ modes=test
 triggers=start
 
 [run]
-shell="#!/bin/bash
-exit 49"
+shell="""#!/bin/bash
+exit 49"""
 `
 
 	hookFile := filepath.Join(tmpDir, "shell-hook.hook")

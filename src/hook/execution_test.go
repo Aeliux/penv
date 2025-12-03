@@ -79,8 +79,8 @@ APP_CONFIG=${BASE_DIR}/config
 APP_FULL=${APP_BIN}s/executable
 
 [run]
-shell="#!/bin/bash
-echo $EXP3 > expanded.txt"
+shell="""#!/bin/bash
+echo $EXP3 > expanded.txt"""
 
 [run.options]
 workdir=` + tmpDir + `

@@ -1,7 +1,6 @@
 package hook
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-version"
+	"gopkg.in/ini.v1"
 )
 
 // Parser handles parsing of hook configuration files
@@ -21,11 +21,11 @@ func NewParser() *Parser {
 
 // ParseFile parses a hook file and returns a Hook object
 func (p *Parser) ParseFile(filePath string) (*Hook, error) {
-	file, err := os.Open(filePath)
+	// Load with ini.v1 - it handles backtick multiline strings natively
+	cfg, err := ini.Load(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open hook file: %w", err)
+		return nil, fmt.Errorf("failed to load hook file: %w", err)
 	}
-	defer file.Close()
 
 	hook := &Hook{
 		FilePath:      filePath,
@@ -34,66 +34,44 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 		SuccessCodes:  []int{0},
 	}
 
-	scanner := bufio.NewScanner(file)
-	currentSection := ""
-	shellLines := []string{}
-	inShellScript := false
+	// Parse [hook] section
+	if err := p.parseHookSectionFromINI(hook, cfg); err != nil {
+		return nil, fmt.Errorf("error parsing hook section in %s: %w", filePath, err)
+	}
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		// Skip empty lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		// Handle multi-line shell script
-		if inShellScript {
-			if strings.HasSuffix(line, `"`) {
-				// End of shell script
-				shellLines = append(shellLines, strings.TrimSuffix(line, `"`))
-				hook.Shell = strings.Join(shellLines, "\n")
-				inShellScript = false
-				shellLines = []string{}
-			} else {
-				shellLines = append(shellLines, line)
-			}
-			continue
-		}
-
-		// Section headers
-		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
-			currentSection = strings.Trim(line, "[]")
-			continue
-		}
-
-		// Parse key-value pairs
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-
-		// Remove quotes if present
-		if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
-			value = value[1 : len(value)-1]
-		}
-
-		// Handle multi-line shell script start
-		if currentSection == "run" && key == "shell" && strings.HasPrefix(value, `"`) && !strings.HasSuffix(value, `"`) {
-			inShellScript = true
-			shellLines = append(shellLines, strings.TrimPrefix(value, `"`))
-		}
-
-		if err := p.parseKeyValue(hook, currentSection, key, value); err != nil {
-			return nil, fmt.Errorf("error parsing %s: %w", filePath, err)
+	// Parse [env] section
+	if envSection, err := cfg.GetSection("env"); err == nil {
+		for _, key := range envSection.Keys() {
+			hook.PersistentEnv = append(hook.PersistentEnv, EnvVariable{
+				Key:   key.Name(),
+				Value: key.String(),
+			})
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error reading hook file: %w", err)
+	// Parse [run] section
+	if err := p.parseRunSectionFromINI(hook, cfg); err != nil {
+		return nil, fmt.Errorf("error parsing run section in %s: %w", filePath, err)
+	}
+
+	// Parse [run.options] section
+	if err := p.parseRunOptionsSectionFromINI(hook, cfg); err != nil {
+		return nil, fmt.Errorf("error parsing run.options section in %s: %w", filePath, err)
+	}
+
+	// Parse [run.env] section
+	if runEnvSection, err := cfg.GetSection("run.env"); err == nil {
+		for _, key := range runEnvSection.Keys() {
+			hook.RunEnv = append(hook.RunEnv, EnvVariable{
+				Key:   key.Name(),
+				Value: key.String(),
+			})
+		}
+	}
+
+	// Parse [run.service] section
+	if err := p.parseRunServiceSectionFromINI(hook, cfg); err != nil {
+		return nil, fmt.Errorf("error parsing run.service section in %s: %w", filePath, err)
 	}
 
 	// Validate hook
@@ -104,49 +82,34 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 	return hook, nil
 }
 
-// parseKeyValue parses a key-value pair based on the current section
-func (p *Parser) parseKeyValue(hook *Hook, section, key, value string) error {
-	switch section {
-	case "hook":
-		return p.parseHookSection(hook, key, value)
-	case "env":
-		pair := EnvVariable{
-			Key:   key,
-			Value: value,
-		}
-		hook.PersistentEnv = append(hook.PersistentEnv, pair)
-	case "run":
-		return p.parseRunSection(hook, key, value)
-	case "run.options":
-		return p.parseRunOptionsSection(hook, key, value)
-	case "run.env":
-		pair := EnvVariable{
-			Key:   key,
-			Value: value,
-		}
-		hook.RunEnv = append(hook.RunEnv, pair)
-	case "run.service":
-		return p.parseRunServiceSection(hook, key, value)
+// parseHookSectionFromINI parses the [hook] metadata section
+func (p *Parser) parseHookSectionFromINI(hook *Hook, cfg *ini.File) error {
+	section, err := cfg.GetSection("hook")
+	if err != nil {
+		// Hook section is optional if only env is defined
+		return nil
 	}
-	return nil
-}
 
-// parseHookSection parses the [hook] metadata section
-func (p *Parser) parseHookSection(hook *Hook, key, value string) error {
-	switch key {
-	case "name":
-		hook.Name = value
-	case "description":
-		hook.Description = value
-	case "version":
-		hook.Version = value
-	case "author":
-		hook.Author = value
-	case "requires":
+	if key, err := section.GetKey("name"); err == nil {
+		hook.Name = key.String()
+	}
+	if key, err := section.GetKey("description"); err == nil {
+		hook.Description = key.String()
+	}
+	if key, err := section.GetKey("version"); err == nil {
+		hook.Version = key.String()
+	}
+	if key, err := section.GetKey("author"); err == nil {
+		hook.Author = key.String()
+	}
+	if key, err := section.GetKey("requires"); err == nil {
+		value := key.String()
 		if value != "" {
 			hook.Requires = splitAndTrim(value, ",")
 		}
-	case "requires-pinit":
+	}
+	if key, err := section.GetKey("requires-pinit"); err == nil {
+		value := key.String()
 		if value != "" {
 			constraints := splitAndTrim(value, ",")
 			for _, c := range constraints {
@@ -157,49 +120,73 @@ func (p *Parser) parseHookSection(hook *Hook, key, value string) error {
 				hook.RequiresPinit = append(hook.RequiresPinit, v)
 			}
 		}
-	case "modes":
+	}
+	if key, err := section.GetKey("modes"); err == nil {
+		value := key.String()
 		if value != "" {
 			hook.Modes = splitAndTrim(value, ",")
 		}
-	case "triggers":
+	}
+	if key, err := section.GetKey("triggers"); err == nil {
+		value := key.String()
 		if value != "" {
 			hook.Triggers = splitAndTrim(value, ",")
 		}
 	}
+
 	return nil
 }
 
-// parseRunSection parses the [run] execution section
-func (p *Parser) parseRunSection(hook *Hook, key, value string) error {
-	switch key {
-	case "command":
+// parseRunSectionFromINI parses the [run] execution section
+func (p *Parser) parseRunSectionFromINI(hook *Hook, cfg *ini.File) error {
+	section, err := cfg.GetSection("run")
+	if err != nil {
+		// Run section is optional if only env is defined
+		return nil
+	}
+
+	if key, err := section.GetKey("command"); err == nil {
 		hook.RunType = RunTypeCommand
-		hook.Command = value
-	case "shell":
+		hook.Command = key.String()
+	}
+	if key, err := section.GetKey("shell"); err == nil {
 		hook.RunType = RunTypeShell
-		hook.Shell = value
-	case "service":
+		hook.Shell = key.String()
+	}
+	if key, err := section.GetKey("service"); err == nil {
 		hook.RunType = RunTypeService
-		hook.Service = value
+		hook.Service = key.String()
 	}
+
 	return nil
 }
 
-// parseRunOptionsSection parses the [run.options] section
-func (p *Parser) parseRunOptionsSection(hook *Hook, key, value string) error {
-	switch key {
-	case "workdir":
-		hook.WorkDir = value
+// parseRunOptionsSectionFromINI parses the [run.options] section
+func (p *Parser) parseRunOptionsSectionFromINI(hook *Hook, cfg *ini.File) error {
+	section, err := cfg.GetSection("run.options")
+	if err != nil {
+		return nil
 	}
+
+	if key, err := section.GetKey("workdir"); err == nil {
+		hook.WorkDir = key.String()
+	}
+
 	return nil
 }
 
-// parseRunServiceSection parses the [run.service] section
-func (p *Parser) parseRunServiceSection(hook *Hook, key, value string) error {
-	switch key {
-	case "restart":
-		hook.Restart = strings.ToLower(value) == "true"
-	case "success-codes":
+// parseRunServiceSectionFromINI parses the [run.service] section
+func (p *Parser) parseRunServiceSectionFromINI(hook *Hook, cfg *ini.File) error {
+	section, err := cfg.GetSection("run.service")
+	if err != nil {
+		return nil
+	}
+
+	if key, err := section.GetKey("restart"); err == nil {
+		hook.Restart = strings.ToLower(key.String()) == "true"
+	}
+	if key, err := section.GetKey("success-codes"); err == nil {
+		value := key.String()
 		if value != "" {
 			codes := splitAndTrim(value, ",")
 			hook.SuccessCodes = []int{}
@@ -212,6 +199,7 @@ func (p *Parser) parseRunServiceSection(hook *Hook, key, value string) error {
 			}
 		}
 	}
+
 	return nil
 }
 
