@@ -42,7 +42,7 @@ workdir=/tmp
 		t.Fatalf("Failed to create hook file: %v", err)
 	}
 
-	parser := NewParser()
+	parser := NewParser(ExecutionMode("test"))
 	h, err := parser.ParseFile(hookFile)
 	if err != nil {
 		t.Fatalf("Failed to parse hook: %v", err)
@@ -112,7 +112,7 @@ GLOBAL_VAR=global_value
 		t.Fatalf("Failed to create hook file: %v", err)
 	}
 
-	parser := NewParser()
+	parser := NewParser(ExecutionMode("test"))
 	h, err := parser.ParseFile(hookFile)
 	if err != nil {
 		t.Fatalf("Failed to parse hook: %v", err)
@@ -144,8 +144,7 @@ exit 49"""
 		t.Fatalf("Failed to create hook file: %v", err)
 	}
 
-	manager := NewManager(ExecutionMode("test"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
 	err := manager.ExecuteTrigger(Trigger("start"))
 	if err == nil {
@@ -204,6 +203,67 @@ func TestCircularDependency(t *testing.T) {
 	_, err := graph.TopologicalSort()
 	if err == nil {
 		t.Error("Expected error for circular dependency")
+	}
+}
+
+func TestModeFiltering(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create hooks with different modes
+	devHook := `[hook]
+name=dev-hook
+modes=dev
+triggers=start
+
+[run]
+command=echo dev
+`
+
+	prodHook := `[hook]
+name=prod-hook
+modes=prod
+triggers=start
+
+[run]
+command=echo prod
+`
+
+	allModesHook := `[hook]
+name=all-modes-hook
+triggers=start
+
+[run]
+command=echo all
+`
+
+	os.WriteFile(filepath.Join(tmpDir, "dev.hook"), []byte(devHook), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "prod.hook"), []byte(prodHook), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "all.hook"), []byte(allModesHook), 0644)
+
+	// Test with dev mode - should load dev-hook and all-modes-hook
+	devManager := NewManager(ExecutionMode("dev"), tmpDir, tmpDir)
+	devHooks := devManager.GetAllHooks()
+	if len(devHooks) != 2 {
+		t.Errorf("Dev mode: expected 2 hooks, got %d", len(devHooks))
+	}
+
+	// Test with prod mode - should load prod-hook and all-modes-hook
+	prodManager := NewManager(ExecutionMode("prod"), tmpDir, tmpDir)
+	prodHooks := prodManager.GetAllHooks()
+	if len(prodHooks) != 2 {
+		t.Errorf("Prod mode: expected 2 hooks, got %d", len(prodHooks))
+	}
+
+	// Verify correct hooks were loaded
+	devHookNames := make(map[string]bool)
+	for _, h := range devHooks {
+		devHookNames[h.Name] = true
+	}
+	if !devHookNames["dev-hook"] || !devHookNames["all-modes-hook"] {
+		t.Error("Dev mode should load dev-hook and all-modes-hook")
+	}
+	if devHookNames["prod-hook"] {
+		t.Error("Dev mode should not load prod-hook")
 	}
 }
 

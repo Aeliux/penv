@@ -31,8 +31,7 @@ TEST_PATH=/opt/test
 	hookFile := filepath.Join(tmpDir, "env-setter.hook")
 	os.WriteFile(hookFile, []byte(hookContent), 0644)
 
-	manager := NewManager(ExecutionMode("test"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
 	if err := manager.ExecuteTrigger(Trigger("start")); err != nil {
 		t.Fatalf("Failed to execute trigger: %v", err)
@@ -94,8 +93,7 @@ EXP3=${EXP2}b
 	hookFile := filepath.Join(tmpDir, "expander.hook")
 	os.WriteFile(hookFile, []byte(hookContent), 0644)
 
-	manager := NewManager(ExecutionMode("test"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 	manager.ExecuteTrigger(Trigger("start"))
 
 	// Check expanded values
@@ -156,8 +154,7 @@ workdir=` + tmpDir + `
 	hookFile := filepath.Join(tmpDir, "test.hook")
 	os.WriteFile(hookFile, []byte(hookContent), 0644)
 
-	manager := NewManager(ExecutionMode("test"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 	manager.ExecuteTrigger(Trigger("start"))
 
 	// Verify the script saw the variable
@@ -188,8 +185,7 @@ ENV_ONLY_VAR=env_only_value
 	hookFile := filepath.Join(tmpDir, "env-only.hook")
 	os.WriteFile(hookFile, []byte(hookContent), 0644)
 
-	manager := NewManager(ExecutionMode("test"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
 	if err := manager.ExecuteTrigger(Trigger("start")); err != nil {
 		t.Fatalf("Env-only hook should not error: %v", err)
@@ -253,8 +249,7 @@ workdir=` + tmpDir + `
 	os.WriteFile(filepath.Join(tmpDir, "set.hook"), []byte(hook1Content), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "use.hook"), []byte(hook2Content), 0644)
 
-	manager := NewManager(ExecutionMode("test"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 	manager.ExecuteTrigger(Trigger("start"))
 
 	// Wait a bit for execution
@@ -310,8 +305,7 @@ command=echo test
 	os.WriteFile(filepath.Join(tmpDir, "fail.hook"), []byte(hook2), 0644)
 	os.WriteFile(filepath.Join(tmpDir, "dep.hook"), []byte(hook3), 0644)
 
-	manager := NewManager(ExecutionMode("test"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test"), tmpDir, tmpDir)
 
 	err := manager.ExecuteTrigger(Trigger("start"))
 	if err == nil {
@@ -380,8 +374,7 @@ workdir=` + tmpDir + `
 
 	os.WriteFile(filepath.Join(tmpDir, "test.hook"), []byte(hookContent), 0644)
 
-	manager := NewManager(ExecutionMode("test-mode"), tmpDir)
-	manager.LoadHooksFromDirectory(tmpDir)
+	manager := NewManager(ExecutionMode("test-mode"), tmpDir, tmpDir)
 	manager.ExecuteTrigger(Trigger("test-trigger"))
 
 	time.Sleep(50 * time.Millisecond)

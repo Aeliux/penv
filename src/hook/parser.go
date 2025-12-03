@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -12,11 +13,15 @@ import (
 )
 
 // Parser handles parsing of hook configuration files
-type Parser struct{}
+type Parser struct {
+	mode ExecutionMode
+}
 
-// NewParser creates a new hook parser
-func NewParser() *Parser {
-	return &Parser{}
+// NewParser creates a new hook parser that filters hooks by mode
+func NewParser(mode ExecutionMode) *Parser {
+	return &Parser{
+		mode: mode,
+	}
 }
 
 // ParseFile parses a hook file and returns a Hook object
@@ -77,6 +82,11 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 	// Validate hook
 	if err := p.validate(hook); err != nil {
 		return nil, fmt.Errorf("validation failed for %s: %w", filePath, err)
+	}
+
+	// Filter by mode - skip hooks that don't match
+	if !p.matchesMode(hook) {
+		return nil, nil // Return nil to indicate hook should be skipped
 	}
 
 	return hook, nil
@@ -203,6 +213,18 @@ func (p *Parser) parseRunServiceSectionFromINI(hook *Hook, cfg *ini.File) error 
 	return nil
 }
 
+// matchesMode checks if a hook should run in the current mode
+func (p *Parser) matchesMode(hook *Hook) bool {
+	// If no modes specified, hook runs in all modes
+	if len(hook.Modes) == 0 {
+		return true
+	}
+
+	// Check if hook supports this mode
+	modeStr := string(p.mode)
+	return slices.Contains(hook.Modes, modeStr)
+}
+
 // validate ensures the hook has required fields
 func (p *Parser) validate(hook *Hook) error {
 	if hook.Name == "" {
@@ -259,7 +281,10 @@ func (p *Parser) ParseDirectory(dirPath string) ([]*Hook, error) {
 			if err != nil {
 				return nil, err
 			}
-			hooks = append(hooks, hook)
+			// Skip hooks that don't match the mode
+			if hook != nil {
+				hooks = append(hooks, hook)
+			}
 		}
 	}
 

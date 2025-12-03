@@ -2,7 +2,6 @@ package hook
 
 import (
 	"fmt"
-	"slices"
 	"sort"
 )
 
@@ -155,38 +154,6 @@ func (g *DependencyGraph) GetAllHooks() []*Hook {
 		hooks = append(hooks, hook)
 	}
 	return hooks
-}
-
-// FilterByMode returns only hooks that support the given mode
-func (g *DependencyGraph) FilterByMode(mode ExecutionMode) *DependencyGraph {
-	filtered := NewDependencyGraph()
-	modeStr := string(mode)
-
-	for name, hook := range g.hooks {
-		// If no modes specified, hook runs in all modes
-		if len(hook.Modes) == 0 {
-			filtered.hooks[name] = hook
-			continue
-		}
-
-		// Check if hook supports this mode
-		if slices.Contains(hook.Modes, modeStr) {
-			filtered.hooks[name] = hook
-		}
-	}
-
-	// Filter edges to only include hooks that are in the filtered set
-	for name := range filtered.hooks {
-		var validDeps []string
-		for _, dep := range g.edges[name] {
-			if _, exists := filtered.hooks[dep]; exists {
-				validDeps = append(validDeps, dep)
-			}
-		}
-		filtered.edges[name] = validDeps
-	}
-
-	return filtered
 }
 
 // FilterByTrigger returns only hooks that support the given trigger

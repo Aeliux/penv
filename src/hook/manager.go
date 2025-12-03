@@ -14,58 +14,39 @@ type Manager struct {
 	allHooks       *DependencyGraph
 	parser         *Parser
 	executor       *Executor
-	hookDirs       []string
 	defaultWorkDir string
 }
 
-// NewManager creates a new hook manager
-func NewManager(mode ExecutionMode, defaultWorkDir string) *Manager {
-	return &Manager{
+// NewManager creates a new hook manager with a specific mode and hook directory
+func NewManager(mode ExecutionMode, hookDir string, defaultWorkDir string) *Manager {
+	m := &Manager{
 		mode:           mode,
 		allHooks:       NewDependencyGraph(),
-		parser:         NewParser(),
-		hookDirs:       []string{},
+		parser:         NewParser(mode),
 		defaultWorkDir: defaultWorkDir,
 	}
-}
 
-// AddHookDirectory adds a directory to search for hooks
-func (m *Manager) AddHookDirectory(dir string) {
-	m.hookDirs = append(m.hookDirs, dir)
-}
-
-// LoadHooks loads all hooks from configured directories
-func (m *Manager) LoadHooks() error {
-	logger.S.Info("Loading hooks...")
-
-	for _, dir := range m.hookDirs {
-		if err := m.loadHooksFromDirectory(dir); err != nil {
-			return fmt.Errorf("failed to load hooks from %s: %w", dir, err)
-		}
+	// Load hooks immediately if directory exists
+	if err := m.loadHooks(hookDir); err != nil {
+		logger.S.Errorf("Failed to load hooks: %v", err)
 	}
 
-	// Validate the complete dependency graph
-	if err := m.allHooks.Validate(); err != nil {
-		return fmt.Errorf("hook validation failed: %w", err)
-	}
-
-	logger.S.Infof("Loaded %d hook(s)", len(m.allHooks.GetAllHooks()))
-	return nil
+	return m
 }
 
-// loadHooksFromDirectory loads hooks from a specific directory
-func (m *Manager) loadHooksFromDirectory(dir string) error {
+// loadHooks loads all hooks from the specified directory
+func (m *Manager) loadHooks(dir string) error {
 	// Check if directory exists
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		logger.S.Debugf("Hook directory does not exist: %s (skipping)", dir)
 		return nil
 	}
 
-	logger.S.Debugf("Loading hooks from: %s", dir)
+	logger.S.Infof("Loading hooks from: %s (mode: %s)", dir, m.mode)
 
 	hooks, err := m.parser.ParseDirectory(dir)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse hooks: %w", err)
 	}
 
 	for _, hook := range hooks {
@@ -75,25 +56,25 @@ func (m *Manager) loadHooksFromDirectory(dir string) error {
 		logger.S.Debugf("Loaded hook: %s (from %s)", hook.Name, filepath.Base(hook.FilePath))
 	}
 
-	return nil
-}
+	// Validate the complete dependency graph
+	if err := m.allHooks.Validate(); err != nil {
+		return fmt.Errorf("hook validation failed: %w", err)
+	}
 
-// LoadHooksFromDirectory loads hooks from a single directory (convenience method)
-func (m *Manager) LoadHooksFromDirectory(dir string) error {
-	m.AddHookDirectory(dir)
-	return m.loadHooksFromDirectory(dir)
+	logger.S.Infof("Loaded %d hook(s) for mode '%s'", len(m.allHooks.GetAllHooks()), m.mode)
+	return nil
 }
 
 // ExecuteTrigger executes all hooks for a given trigger
 func (m *Manager) ExecuteTrigger(trigger Trigger) error {
 	logger.S.Infof("Executing trigger: %s (mode: %s)", trigger, m.mode)
 
-	// Filter hooks by mode and trigger
-	filtered := m.allHooks.FilterByMode(m.mode).FilterByTrigger(trigger)
+	// Filter hooks by trigger (mode already filtered during parsing)
+	filtered := m.allHooks.FilterByTrigger(trigger)
 
 	hooks := filtered.GetAllHooks()
 	if len(hooks) == 0 {
-		logger.S.Infof("No hooks to execute for trigger '%s' in mode '%s'", trigger, m.mode)
+		logger.S.Infof("No hooks to execute for trigger '%s'", trigger)
 		return nil
 	}
 
@@ -160,14 +141,8 @@ func (m *Manager) GetAllHooks() []*Hook {
 
 // GetHooksForTrigger returns hooks that would execute for a given trigger
 func (m *Manager) GetHooksForTrigger(trigger Trigger) []*Hook {
-	filtered := m.allHooks.FilterByMode(m.mode).FilterByTrigger(trigger)
+	filtered := m.allHooks.FilterByTrigger(trigger)
 	return filtered.GetAllHooks()
-}
-
-// SetMode changes the execution mode
-func (m *Manager) SetMode(mode ExecutionMode) {
-	m.mode = mode
-	logger.S.Infof("Hook mode set to: %s", mode)
 }
 
 // GetMode returns the current execution mode
