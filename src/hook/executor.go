@@ -101,53 +101,6 @@ func (e *Executor) executeBatch(batch []string) error {
 
 // executeHook executes a single hook
 func (e *Executor) executeHook(hook *Hook) error {
-	// Apply persistent environment variables to proc.EnvironmentVariables FIRST
-	// This happens before dependency checking so env-only hooks can affect their dependents
-	if len(hook.PersistentEnv) > 0 {
-		logger.S.Debugf("Applying %d persistent environment variables from hook '%s'", len(hook.PersistentEnv), hook.Name)
-
-		// To support variable expansion that references other vars in same section,
-		// we apply vars in multiple passes. Each var can reference previously applied vars.
-		applied := make(map[string]string)
-		maxPasses := 10 // Prevent infinite loops
-
-		for pass := 0; pass < maxPasses; pass++ {
-			changed := false
-			for key, value := range hook.PersistentEnv {
-				// Skip if already fully applied (no more $ signs)
-				if appliedVal, exists := applied[key]; exists && !strings.Contains(appliedVal, "$") {
-					continue
-				}
-
-				// Expand using empty envMap so it checks proc.EnvironmentVariables
-				// This allows vars in this section to reference each other
-				expandedValue := expandEnvVars(value, nil)
-				if applied[key] != expandedValue {
-					applied[key] = expandedValue
-					proc.EnvironmentVariables.Set(key, expandedValue)
-					changed = true
-					logger.S.Debugf("  %s=%s (pass %d)", key, expandedValue, pass+1)
-				}
-			}
-			if !changed {
-				break
-			}
-		}
-	}
-
-	// If hook has no run section, it's an env-only hook
-	if hook.RunType == "" {
-		logger.S.Infof("Hook '%s' is env-only (no run section), environment updated", hook.Name)
-		execution := &HookExecution{
-			Hook:      hook,
-			Status:    StatusCompleted,
-			StartTime: time.Now(),
-			EndTime:   time.Now(),
-		}
-		e.setExecution(hook.Name, execution)
-		return nil
-	}
-
 	// Check dependencies
 	depStatuses := make(map[string]ExecutionStatus)
 	for _, depName := range hook.Requires {
@@ -183,6 +136,33 @@ func (e *Executor) executeHook(hook *Hook) error {
 			logger.S.Warnf("Skipping hook '%s': dependency '%s' %s", hook.Name, depName, depExec.Status)
 			return fmt.Errorf("dependency '%s' %s", depName, depExec.Status)
 		}
+	}
+
+	if len(hook.PersistentEnv) > 0 {
+		logger.S.Debugf("Applying %d persistent environment variables from hook '%s'", len(hook.PersistentEnv), hook.Name)
+
+		for key, value := range hook.PersistentEnv {
+			expandedValue := os.Expand(value, func(varName string) string {
+				val, _ := proc.EnvironmentVariables.Get(varName)
+				return val
+			})
+
+			proc.EnvironmentVariables.Set(key, expandedValue)
+			logger.S.Infof("Set persistent env var: %s=%s", key, expandedValue)
+		}
+	}
+
+	// If hook has no run section, it's an env-only hook
+	if hook.RunType == "" {
+		logger.S.Infof("Hook '%s' is env-only (no run section), environment updated", hook.Name)
+		execution := &HookExecution{
+			Hook:      hook,
+			Status:    StatusCompleted,
+			StartTime: time.Now(),
+			EndTime:   time.Now(),
+		}
+		e.setExecution(hook.Name, execution)
+		return nil
 	}
 
 	execution := &HookExecution{
@@ -231,7 +211,15 @@ func (e *Executor) buildHookEnv(hook *Hook) map[string]string {
 
 	// Copy hook's run-only environment variables and expand them
 	for key, value := range hook.RunEnv {
-		env[key] = expandEnvVars(value, hook.RunEnv)
+		env[key] = os.Expand(value, func(varName string) string {
+			// First check in our local env map
+			if val, exists := env[varName]; exists {
+				return val
+			}
+			// Then check in proc.EnvironmentVariables
+			val, _ := proc.EnvironmentVariables.Get(varName)
+			return val
+		})
 	}
 
 	// Add PINIT_HOOK_* variables

@@ -74,9 +74,21 @@ modes=test
 triggers=start
 
 [env]
-APP_BIN=$BASE_DIR/bin
+APP_BIN=${BASE_DIR}/bin
 APP_CONFIG=${BASE_DIR}/config
-APP_FULL=$APP_BIN/executable
+APP_FULL=${APP_BIN}s/executable
+
+[run]
+shell="#!/bin/bash
+echo $EXP3 > expanded.txt"
+
+[run.options]
+workdir=` + tmpDir + `
+
+[run.env]
+EXP=${APP_FULL}
+EXP2=${EXP}a
+EXP3=${EXP2}b
 `
 
 	hookFile := filepath.Join(tmpDir, "expander.hook")
@@ -98,8 +110,20 @@ APP_FULL=$APP_BIN/executable
 	}
 
 	val, _ = proc.EnvironmentVariables.Get("APP_FULL")
-	if val != "/opt/app/bin/executable" {
-		t.Errorf("Expected APP_FULL='/opt/app/bin/executable', got '%s'", val)
+	if val != "/opt/app/bins/executable" {
+		t.Errorf("Expected APP_FULL='/opt/app/bins/executable', got '%s'", val)
+	}
+
+	// Check that the script saw the fully expanded variable
+	expandedFile := filepath.Join(tmpDir, "expanded.txt")
+	data, err := os.ReadFile(expandedFile)
+	if err != nil {
+		t.Fatalf("Failed to read expanded.txt: %v", err)
+	}
+	content := strings.TrimSpace(string(data))
+	expected := "/opt/app/bins/executableab"
+	if content != expected {
+		t.Errorf("Expected expanded content '%s', got '%s'", expected, content)
 	}
 }
 
