@@ -8,20 +8,26 @@ import (
 )
 
 // ExecutionMode represents the mode in which hooks can run
-// It's a flexible string type - you can use any mode name you want
 type ExecutionMode string
 
 // Trigger represents when a hook should be executed
-// It's a flexible string type - you can use any trigger name you want
 type Trigger string
 
 // RunType indicates what type of execution the hook performs
 type RunType string
 
 const (
-	RunTypeCommand RunType = "command"
-	RunTypeShell   RunType = "shell"
-	RunTypeService RunType = "service"
+	RunTypeNormal  RunType = "normal"  // Run once and capture exit code
+	RunTypeService RunType = "service" // Run as a long-running service
+)
+
+// ExecFormat indicates how the hook is executed
+type ExecFormat string
+
+const (
+	ExecFormatUndefined ExecFormat = ""        // Undefined exec format
+	ExecFormatCommand   ExecFormat = "command" // Single command execution
+	ExecFormatScript    ExecFormat = "script"  // Script execution
 )
 
 type EnvVariable struct {
@@ -32,31 +38,36 @@ type EnvVariable struct {
 // Hook represents a parsed hook configuration
 type Hook struct {
 	// Metadata
-	Name        string
-	Description string
-	Version     string
-	Author      string
+	Name         string               // Unique name of the hook
+	Description  string               // Optional description of the hook
+	Version      *version.Version     // Optional version of the hook
+	Author       string               // Optional author of the hook
+	PinitVersion *version.Constraints // Pinit version constraint
+	Requires     []string             // Dependencies on other hooks
+	SuccessCodes []int                // Exit codes considered successful
+	SingleRun    bool                 // If true, the hook will only run once per pinit execution
 
-	// Dependencies and constraints
-	Requires      []string           // Other hooks required before this one
-	RequiresPinit *version.Constraints // Pinit version constraint
-	Modes         []string           // Modes where hook will execute (flexible)
-	Triggers      []string           // Triggers for hook execution (flexible)
+	// Conditions
+	ConditionScript string               // Script that must return 0 to run the hook
+	PenvVersion     *version.Constraints // Penv version constraint
+	Modes           []string             // Modes where hook will execute
+	Triggers        []string             // Triggers for hook execution
 
 	// Execution configuration
-	RunType RunType
-	Command string // For command execution
-	Shell   string // For shell script execution
-	Service string // For service execution
-	WorkDir string // Working directory
+	Exec       string     // Command or script to execute
+	ExecFormat ExecFormat // Format of execution
+	RunType    RunType    // Type of execution
+	WorkDir    string     // Working directory
 
 	// Environment variables
 	PersistentEnv []EnvVariable // [env] - Updates proc.EnvironmentVariables, affects all future processes
 	RunEnv        []EnvVariable // [run.env] - Only for this hook's execution
 
+	// Normal run options
+	TimeoutSeconds int // Timeout for normal hooks
+
 	// Service options
-	Restart      bool  // Whether to restart service if it fails
-	SuccessCodes []int // Exit codes considered successful
+	RestartCount int // Number of restarts for service hooks
 
 	// Runtime state
 	FilePath string // Path to the hook file
