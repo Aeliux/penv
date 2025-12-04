@@ -39,7 +39,7 @@ type Hook struct {
 
 	// Dependencies and constraints
 	Requires      []string           // Other hooks required before this one
-	RequiresPinit []*version.Version // Pinit version constraints (>=3, <4, etc.)
+	RequiresPinit *version.Constraints // Pinit version constraint
 	Modes         []string           // Modes where hook will execute (flexible)
 	Triggers      []string           // Triggers for hook execution (flexible)
 
@@ -73,6 +73,13 @@ const (
 	StatusSkipped   ExecutionStatus = "skipped"
 )
 
+type SkipReason string
+
+const (
+	SkipReasonDependencyFailed SkipReason = "dependency_failed"
+	SkipReasonConditionNotMet  SkipReason = "condition_not_met"
+)
+
 // HookExecution represents the runtime state of a hook
 type HookExecution struct {
 	Hook         *Hook
@@ -84,7 +91,7 @@ type HookExecution struct {
 	Error        error
 	PID          int                        // For service hooks
 	ExitCode     int                        // Exit code of the hook process
-	SkipReason   string                     // Reason why hook was skipped
+	SkipReason   SkipReason                 // Reason why hook was skipped
 	Dependencies map[string]ExecutionStatus // Status of dependencies
 }
 

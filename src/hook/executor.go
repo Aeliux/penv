@@ -105,7 +105,7 @@ func (e *Executor) executeHook(hook *Hook) error {
 			// Dependency not executed yet (shouldn't happen with proper topological sort)
 			execution := e.createExecution(hook, StatusSkipped)
 			execution.EndTime = time.Now()
-			execution.SkipReason = fmt.Sprintf("dependency '%s' not executed", depName)
+			execution.SkipReason = SkipReasonDependencyFailed
 			execution.Dependencies = depStatuses
 			e.setExecution(hook.Name, execution)
 			logger.S.Warnf("Skipping hook '%s': dependency '%s' not executed", hook.Name, depName)
@@ -118,7 +118,7 @@ func (e *Executor) executeHook(hook *Hook) error {
 		if depExec.Status != StatusCompleted {
 			execution := e.createExecution(hook, StatusSkipped)
 			execution.EndTime = time.Now()
-			execution.SkipReason = fmt.Sprintf("dependency '%s' failed with status: %s", depName, depExec.Status)
+			execution.SkipReason = SkipReasonDependencyFailed
 			execution.Dependencies = depStatuses
 			e.setExecution(hook.Name, execution)
 			logger.S.Warnf("Skipping hook '%s': dependency '%s' %s", hook.Name, depName, depExec.Status)

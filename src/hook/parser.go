@@ -120,15 +120,9 @@ func (p *Parser) parseHookSectionFromINI(hook *Hook, cfg *ini.File) error {
 	}
 	if key, err := section.GetKey("requires-pinit"); err == nil {
 		value := key.String()
-		if value != "" {
-			constraints := splitAndTrim(value, ",")
-			for _, c := range constraints {
-				v, err := version.NewVersion(parseVersionConstraint(c))
-				if err != nil {
-					return fmt.Errorf("invalid pinit version constraint '%s': %w", c, err)
-				}
-				hook.RequiresPinit = append(hook.RequiresPinit, v)
-			}
+		constraint, err := version.NewConstraint(value)
+		if err == nil {
+			hook.RequiresPinit = &constraint
 		}
 	}
 	if key, err := section.GetKey("modes"); err == nil {
