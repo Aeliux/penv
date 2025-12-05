@@ -81,9 +81,19 @@ const (
 type SkipReason string
 
 const (
-	SkipReasonDependencyFailed SkipReason = "dependency_failed"
-	SkipReasonConditionNotMet  SkipReason = "condition_not_met"
+	SkipReasonNone                SkipReason = ""
+	SkipReasonDependencyMissing   SkipReason = "dependency_missing"
+	SkipReasonDependencyFailed    SkipReason = "dependency_failed"
+	SkipReasonIncompatibleVersion SkipReason = "incompatible_version"
+	SkipReasonConditionNotMet     SkipReason = "condition_not_met"
 )
+
+type ExecutionResult struct {
+	ExitCode   int
+	Error      error
+	IsTimedOut bool
+	IsSuccess  bool
+}
 
 // HookExecution represents the runtime state of a hook
 type HookExecution struct {
@@ -93,9 +103,7 @@ type HookExecution struct {
 	Trigger      Trigger
 	StartTime    time.Time
 	EndTime      time.Time
-	Error        error
-	PID          int                        // For service hooks
-	ExitCode     int                        // Exit code of the hook process
+	Result       *ExecutionResult
 	SkipReason   SkipReason                 // Reason why hook was skipped
 	Dependencies map[string]ExecutionStatus // Status of dependencies
 }

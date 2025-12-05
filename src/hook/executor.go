@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -16,6 +15,7 @@ import (
 
 // Executor handles the execution of hooks
 type Executor struct {
+	manager        *Manager
 	graph          *DependencyGraph
 	executions     map[string]*HookExecution
 	executionsMux  sync.RWMutex
@@ -25,12 +25,13 @@ type Executor struct {
 }
 
 // NewExecutor creates a new hook executor
-func NewExecutor(graph *DependencyGraph, defaultWorkDir string, mode ExecutionMode, trigger Trigger) *Executor {
+func NewExecutor(manager *Manager, graph *DependencyGraph, defaultWorkDir string, mode ExecutionMode, trigger Trigger) *Executor {
 	if defaultWorkDir == "" {
 		defaultWorkDir = "/"
 	}
 
 	return &Executor{
+		manager:        manager,
 		graph:          graph,
 		executions:     make(map[string]*HookExecution),
 		defaultWorkDir: defaultWorkDir,
@@ -97,15 +98,38 @@ func (e *Executor) executeBatch(batch []string) error {
 
 // executeHook executes a single hook
 func (e *Executor) executeHook(hook *Hook) error {
-	// Check dependencies
-	depStatuses := make(map[string]ExecutionStatus)
-	for _, depName := range hook.Requires {
-		depExec, exists := e.GetExecution(depName)
-		if !exists {
-			// Dependency not executed yet (shouldn't happen with proper topological sort)
+	// Check version constraints
+	if hook.PinitVersion != nil {
+		if !hook.PinitVersion.Check(e.manager.pinitVersion) {
 			execution := e.createExecution(hook, StatusSkipped)
 			execution.EndTime = time.Now()
-			execution.SkipReason = SkipReasonDependencyFailed
+			execution.SkipReason = SkipReasonIncompatibleVersion
+			e.setExecution(hook.Name, execution)
+			logger.S.Warnf("Skipping hook '%s': requires pinit version %s, current version is %s", hook.Name, hook.PinitVersion.String(), e.manager.pinitVersion.String())
+			return fmt.Errorf("requires pinit version %s", hook.PinitVersion.String())
+		}
+	}
+
+	if hook.PenvVersion != nil {
+		if !hook.PenvVersion.Check(e.manager.penvVersion) {
+			execution := e.createExecution(hook, StatusSkipped)
+			execution.EndTime = time.Now()
+			execution.SkipReason = SkipReasonIncompatibleVersion
+			e.setExecution(hook.Name, execution)
+			logger.S.Warnf("Skipping hook '%s': requires penv version %s, current version is %s", hook.Name, hook.PenvVersion.String(), e.manager.penvVersion.String())
+			return fmt.Errorf("requires penv version %s", hook.PenvVersion.String())
+		}
+	}
+
+	// Check dependencies
+	depStatuses := make(map[string]ExecutionStatus)
+	for _, depName := range hook.RequiredHooks {
+		depExec, exists := e.GetExecution(depName)
+		if !exists {
+			// Dependency not executed yet
+			execution := e.createExecution(hook, StatusSkipped)
+			execution.EndTime = time.Now()
+			execution.SkipReason = SkipReasonDependencyMissing
 			execution.Dependencies = depStatuses
 			e.setExecution(hook.Name, execution)
 			logger.S.Warnf("Skipping hook '%s': dependency '%s' not executed", hook.Name, depName)
@@ -126,6 +150,29 @@ func (e *Executor) executeHook(hook *Hook) error {
 		}
 	}
 
+	// Check for single-run hooks
+	if hook.SingleRun {
+		reuse := true
+
+		// Check service running
+		if hook.RunType == RunTypeService {
+			if _, exists := GetGlobalService(hook.Name); exists {
+				logger.S.Infof("Hook '%s' is single-run service and is already running, skipping execution", hook.Name)
+			} else {
+				// Not running, proceed to execute
+				reuse = false
+			}
+		}
+		// Check if already run
+		pastExec, exists := e.manager.singleRunHooks[hook.Name]
+		if reuse && exists {
+			logger.S.Infof("Hook '%s' is single-run and has already executed, reusing previous result", hook.Name)
+			e.setExecution(hook.Name, &pastExec)
+			return pastExec.Result.Error
+		}
+	}
+
+	// Apply persistent environment variables
 	if len(hook.PersistentEnv) > 0 {
 		logger.S.Debugf("Applying %d persistent environment variables from hook '%s'", len(hook.PersistentEnv), hook.Name)
 
@@ -154,37 +201,87 @@ func (e *Executor) executeHook(hook *Hook) error {
 	e.setExecution(hook.Name, execution)
 	logger.S.Infof("Executing hook: %s", hook.Name)
 
-	var err error
-	var exCode int
+	var result *ExecutionResult
 	switch hook.RunType {
-	case RunTypeCommand:
-		exCode, err = e.executeCommand(hook, execution)
-	case RunTypeShell:
-		exCode, err = e.executeShell(hook, execution)
+	case RunTypeNormal:
+		result = e.executeNormal(hook, execution)
 	case RunTypeService:
-		exCode, err = e.executeService(hook, execution)
+		result = e.executeService(hook, execution)
 	default:
-		exCode, err = -1, fmt.Errorf("unknown run type: %s", hook.RunType)
+		return fmt.Errorf("unsupported run type '%s' for hook '%s'", hook.RunType, hook.Name)
 	}
 
 	execution.EndTime = time.Now()
-	if err != nil {
+	execution.Result = result
+	if result.Error != nil {
 		execution.Status = StatusFailed
-		execution.Error = err
-		execution.ExitCode = exCode
-		logger.S.Errorf("Hook '%s' failed: %v", hook.Name, err)
-		return err
+		logger.S.Errorf("Hook '%s' failed: %v", hook.Name, result.Error)
+		return result.Error
 	}
 
 	execution.Status = StatusCompleted
 	logger.S.Infof("Hook '%s' completed successfully", hook.Name)
-	e.setExecution(hook.Name, execution)
+
+	if hook.SingleRun {
+		// Store in manager's single-run hooks
+		e.manager.singleRunHooks[hook.Name] = *execution
+	}
 
 	return nil
 }
 
+func (e *Executor) prepareCommand(hook *Hook, conditionScript bool) (string, []string, error) {
+	execFormat := hook.ExecFormat
+	// trick: if preparing for condition script, always treat as script
+	if conditionScript {
+		execFormat = ExecFormatScript
+	}
+
+	if execFormat == ExecFormatUndefined {
+		return "", nil, fmt.Errorf("undefined execution format for hook '%s'", hook.Name)
+	}
+
+	var command string
+	var args []string
+
+	switch execFormat {
+	case ExecFormatScript:
+		tmpFile, err := os.CreateTemp("", fmt.Sprintf("hook-%s-*", hook.Name))
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to create temp script file: %w", err)
+		}
+		defer tmpFile.Close()
+
+		scriptString := &hook.Exec
+		if conditionScript {
+			scriptString = &hook.ConditionScript
+		}
+		if _, err := tmpFile.WriteString(*scriptString); err != nil {
+			return "", nil, fmt.Errorf("failed to write to temp script file: %w", err)
+		}
+
+		if err := tmpFile.Chmod(0755); err != nil {
+			return "", nil, fmt.Errorf("failed to set execute permission on temp script file: %w", err)
+		}
+
+		command = tmpFile.Name()
+		args = []string{}
+	case ExecFormatCommand:
+		parts := strings.Fields(hook.Exec)
+		if len(parts) == 0 {
+			return "", nil, fmt.Errorf("empty command in hook '%s'", hook.Name)
+		}
+		command = parts[0]
+		args = parts[1:]
+	default:
+		return "", nil, fmt.Errorf("unsupported execution format '%s' for hook '%s'", execFormat, hook.Name)
+	}
+
+	return command, args, nil
+}
+
 // createCommand creates a configured exec.Cmd for a hook
-func (e *Executor) createCommand(hook *Hook, command string, args []string) *exec.Cmd {
+func (e *Executor) createCommand(hook *Hook, conditionScript bool) (*exec.Cmd, error) {
 	env := make(map[string]string)
 
 	// Copy hook's run-only environment variables and expand them
@@ -206,6 +303,11 @@ func (e *Executor) createCommand(hook *Hook, command string, args []string) *exe
 	env["PINIT_HOOK_MODE"] = string(e.mode)
 	env["PINIT_HOOK_TRIGGER"] = string(e.trigger)
 
+	command, args, err := e.prepareCommand(hook, conditionScript)
+	if err != nil {
+		logger.S.Errorf("Failed to prepare command for hook '%s': %v", hook.Name, err)
+		return nil, err
+	}
 	cmd := proc.GetCmd(command, args, env, nil, nil, nil)
 
 	// Set working directory
@@ -215,73 +317,100 @@ func (e *Executor) createCommand(hook *Hook, command string, args []string) *exe
 	}
 	cmd.Dir = workDir
 
-	return cmd
+	return cmd, nil
 }
 
 // runCommandWithWait executes a command and waits for completion, checking success codes
-func (e *Executor) runCommandWithWait(cmd *exec.Cmd, hook *Hook, cmdDescription string) (int, error) {
-	logger.S.Debugf("Running %s for hook '%s' (workdir: %s)", cmdDescription, hook.Name, cmd.Dir)
-
-	if err := cmd.Run(); err != nil {
-		if cmd.ProcessState != nil {
-			exitCode := cmd.ProcessState.ExitCode()
-			if !e.isSuccessCode(hook, exitCode) {
-				return exitCode, fmt.Errorf("%s exited with non-success code: %d", cmdDescription, exitCode)
-			}
-		} else {
-			return -1, fmt.Errorf("%s failed: %w", cmdDescription, err)
+func (e *Executor) runCommandWithWait(cmd *exec.Cmd, hook *Hook, timeoutSeconds int) *ExecutionResult {
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		return &ExecutionResult{
+			ExitCode: -1,
+			Error:    fmt.Errorf("failed to start command: %w", err),
 		}
 	}
 
-	return 0, nil
+	// Channel to signal completion and capture exit code and error
+	done := make(chan *ExecutionResult, 1)
+
+	// Wait for command to complete in a separate goroutine
+	go func() {
+		err := cmd.Wait()
+		exitCode := 0
+		success := false
+		if cmd.ProcessState != nil {
+			exitCode = cmd.ProcessState.ExitCode()
+			// Check if exit code is considered success
+			if !e.isSuccessCode(hook, exitCode) {
+				err = fmt.Errorf("command exited with code %d", exitCode)
+			} else {
+				err = nil
+				success = true
+			}
+		}
+		done <- &ExecutionResult{
+			ExitCode:  exitCode,
+			Error:     err,
+			IsSuccess: success,
+		}
+	}()
+
+	// Handle timeout if specified
+	if timeoutSeconds > 0 {
+		select {
+		case res := <-done:
+			return res
+		case <-time.After(time.Duration(timeoutSeconds) * time.Second):
+			// Timeout occurred, kill the process
+			if err := cmd.Process.Kill(); err != nil {
+				return &ExecutionResult{
+					ExitCode: -1,
+					Error:    fmt.Errorf("failed to kill process after timeout: %w", err),
+				}
+			}
+			return &ExecutionResult{
+				ExitCode:   -1,
+				Error:      fmt.Errorf("command timed out after %d seconds", timeoutSeconds),
+				IsTimedOut: true,
+			}
+		}
+	} else {
+		// No timeout, just wait for completion
+		res := <-done
+		return res
+	}
 }
 
-// executeCommand executes a command hook
-func (e *Executor) executeCommand(hook *Hook, execution *HookExecution) (int, error) {
-	// Parse command and arguments
-	parts := strings.Fields(hook.Command)
-	if len(parts) == 0 {
-		return -1, fmt.Errorf("empty command")
+// executeNormal executes a normal hook
+func (e *Executor) executeNormal(hook *Hook, execution *HookExecution) *ExecutionResult {
+	cmd, err := e.createCommand(hook, false)
+	if err != nil {
+		return &ExecutionResult{
+			ExitCode: -1,
+			Error:    fmt.Errorf("failed to create command: %w", err),
+		}
 	}
 
-	cmd := e.createCommand(hook, parts[0], parts[1:])
-	return e.runCommandWithWait(cmd, hook, "command")
-}
-
-// executeShell executes a shell script hook
-func (e *Executor) executeShell(hook *Hook, execution *HookExecution) (int, error) {
-	// Create a temporary script file
-	tmpDir := os.TempDir()
-	scriptPath := filepath.Join(tmpDir, fmt.Sprintf("hook-%s-%d.sh", hook.Name, time.Now().UnixNano()))
-
-	if err := os.WriteFile(scriptPath, []byte(hook.Shell), 0755); err != nil {
-		return -1, fmt.Errorf("failed to create script file: %w", err)
+	if hook.ExecFormat == ExecFormatScript {
+		logger.S.Infof("Executing script %s hook '%s' in %s", cmd.Args[0], hook.Name, cmd.Dir)
+	} else {
+		logger.S.Infof("Executing command %s hook '%s' in %s", cmd.Args, hook.Name, cmd.Dir)
 	}
-	defer os.Remove(scriptPath)
 
-	cmd := e.createCommand(hook, scriptPath, []string{})
-	return e.runCommandWithWait(cmd, hook, "shell script")
+	return e.runCommandWithWait(cmd, hook, hook.TimeoutSeconds)
 }
 
 // executeService starts a service hook
-func (e *Executor) executeService(hook *Hook, execution *HookExecution) (int, error) {
-	// Check if service is already running globally
-	if existing, exists := GetGlobalService(hook.Name); exists {
-		pid := existing.GetPID()
-		logger.S.Infof("Service '%s' already running with PID %d, skipping start", hook.Name, pid)
-		execution.PID = pid
-		return 0, nil
+func (e *Executor) executeService(hook *Hook, execution *HookExecution) *ExecutionResult {
+	cmd, err := e.createCommand(hook, false)
+	if err != nil {
+		return &ExecutionResult{
+			ExitCode: -1,
+			Error:    fmt.Errorf("failed to create command: %w", err),
+		}
 	}
 
-	// Parse service command and arguments
-	parts := strings.Fields(hook.Service)
-	if len(parts) == 0 {
-		return -1, fmt.Errorf("empty service command")
-	}
-
-	cmd := e.createCommand(hook, parts[0], parts[1:])
-
-	logger.S.Infof("Starting service: %s (workdir: %s)", hook.Service, cmd.Dir)
+	logger.S.Infof("Starting service hook '%s' with command %s in %s", hook.Name, cmd.Args, cmd.Dir)
 
 	// Start the service process
 	serviceState := &ServiceState{
@@ -300,22 +429,37 @@ func (e *Executor) executeService(hook *Hook, execution *HookExecution) (int, er
 	select {
 	case err := <-startupDone:
 		if err != nil {
-			return -1, err
+			return &ExecutionResult{
+				ExitCode: -1,
+				Error:    err,
+			}
 		}
 		// Startup successful, register the service
 		RegisterGlobalService(hook.Name, serviceState)
-		execution.PID = serviceState.GetPID()
-		return 0, nil
+		return &ExecutionResult{
+			ExitCode:  0,
+			Error:     nil,
+			IsSuccess: true,
+		}
 	case <-time.After(5 * time.Second):
 		// Timeout waiting for service to start
 		serviceState.SetActive(false)
-		return -1, fmt.Errorf("timeout waiting for service to start")
+		return &ExecutionResult{
+			ExitCode:   -1,
+			Error:      fmt.Errorf("service startup timed out"),
+			IsTimedOut: true,
+		}
 	}
 }
 
 // manageService handles service lifecycle including restarts
 func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState, startupDone chan error) {
 	firstStart := true
+	defer func() {
+		state.SetActive(false)
+		UnregisterGlobalService(state.Hook.Name)
+	}()
+
 	for {
 		err := cmd.Start()
 		if err != nil {
@@ -328,7 +472,7 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState, startupDone
 		}
 
 		state.SetPID(cmd.Process.Pid)
-		// Only add to RunningPids on first start (RegisterGlobalService already added it)
+		// Register PID after first successful start
 		if !firstStart {
 			proc.RunningPids.AddProcess(cmd.Process)
 		}
@@ -354,25 +498,19 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState, startupDone
 		// Check if exit code is considered success
 		if e.isSuccessCode(state.Hook, exitCode) {
 			logger.S.Infof("Service '%s' exited successfully", state.Hook.Name)
-			state.SetActive(false)
-			UnregisterGlobalService(state.Hook.Name)
 			return
 		}
 
 		// Check if restart is enabled
-		if !state.Hook.Restart {
+		if state.Hook.RestartCount <= 0 {
 			logger.S.Errorf("Service '%s' failed and restart is disabled", state.Hook.Name)
-			state.SetActive(false)
-			UnregisterGlobalService(state.Hook.Name)
 			return
 		}
 
 		// Check restart limit
 		restarts := state.GetRestarts()
-		if restarts >= 10 {
+		if restarts >= state.Hook.RestartCount {
 			logger.S.Errorf("Service '%s' reached maximum restart attempts (%d), not restarting", state.Hook.Name, restarts)
-			state.SetActive(false)
-			UnregisterGlobalService(state.Hook.Name)
 			return
 		}
 
@@ -384,11 +522,10 @@ func (e *Executor) manageService(cmd *exec.Cmd, state *ServiceState, startupDone
 		time.Sleep(1 * time.Second)
 
 		// Create a new command for the restart
-		parts := strings.Fields(state.Hook.Service)
-		cmd = e.createCommand(state.Hook, parts[0], parts[1:])
-		cmd.Dir = state.Hook.WorkDir
-		if cmd.Dir == "" {
-			cmd.Dir = "/"
+		cmd, err = e.createCommand(state.Hook, false)
+		if err != nil {
+			logger.S.Errorf("Failed to create command for restarting service '%s': %v", state.Hook.Name, err)
+			return
 		}
 	}
 }

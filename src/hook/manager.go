@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"penv/shared/logger"
+
+	"github.com/hashicorp/go-version"
 )
 
 // Manager provides a high-level API for hook management
@@ -14,15 +16,21 @@ type Manager struct {
 	allHooks       *DependencyGraph
 	parser         *Parser
 	defaultWorkDir string
+	singleRunHooks map[string]HookExecution
+	pinitVersion   *version.Version
+	penvVersion    *version.Version
 }
 
 // NewManager creates a new hook manager with a specific mode and hook directory
-func NewManager(mode ExecutionMode, hookDir string, defaultWorkDir string) *Manager {
+func NewManager(mode ExecutionMode, hookDir string, defaultWorkDir string, pinitVersion *version.Version, penvVersion *version.Version) *Manager {
 	m := &Manager{
 		mode:           mode,
 		allHooks:       NewDependencyGraph(),
 		parser:         NewParser(mode),
 		defaultWorkDir: defaultWorkDir,
+		singleRunHooks: make(map[string]HookExecution),
+		pinitVersion:   pinitVersion,
+		penvVersion:    penvVersion,
 	}
 
 	// Load hooks immediately if directory exists
@@ -88,7 +96,7 @@ func (m *Manager) ExecuteTrigger(trigger Trigger) (*Executor, error) {
 	logger.S.Infof("Execution plan: %d batch(es)", len(batches))
 
 	// Create executor and execute batches
-	executor := NewExecutor(filtered, m.defaultWorkDir, m.mode, trigger)
+	executor := NewExecutor(m, filtered, m.defaultWorkDir, m.mode, trigger)
 	if err := executor.ExecuteBatches(batches); err != nil {
 		return executor, fmt.Errorf("hook execution failed: %w", err)
 	}

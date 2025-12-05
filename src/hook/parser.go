@@ -37,6 +37,7 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 		PersistentEnv: []EnvVariable{},
 		RunEnv:        []EnvVariable{},
 		SuccessCodes:  []int{0},
+		RunType:       "",
 	}
 
 	// Parse [hook] hookSection

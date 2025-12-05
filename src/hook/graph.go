@@ -26,7 +26,7 @@ func (g *DependencyGraph) AddHook(hook *Hook) error {
 	}
 
 	g.hooks[hook.Name] = hook
-	g.edges[hook.Name] = hook.Requires
+	g.edges[hook.Name] = hook.RequiredHooks
 	return nil
 }
 
