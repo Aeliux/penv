@@ -61,22 +61,6 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 	if key, err := hookSection.GetKey("author"); err == nil {
 		hook.Author = key.String()
 	}
-	if key, err := hookSection.GetKey("pinit-version"); err == nil {
-		constraintStr := key.String()
-		if constraintStr != "" {
-			constraints, err := version.NewConstraint(constraintStr)
-			if err != nil {
-				return nil, fmt.Errorf("invalid pinit-version constraint '%s': %w", constraintStr, err)
-			}
-			hook.PinitVersion = &constraints
-		}
-	}
-	if key, err := hookSection.GetKey("requires"); err == nil {
-		value := key.String()
-		if value != "" {
-			hook.Requires = splitAndTrim(value, ",")
-		}
-	}
 	if key, err := hookSection.GetKey("success-codes"); err == nil {
 		value := key.String()
 		if value != "" {
@@ -95,12 +79,25 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 		hook.SingleRun = key.MustBool(false)
 	}
 
-	// Parse [conditions] section
-	if condSection, err := cfg.GetSection("conditions"); err == nil {
-		if key, err := condSection.GetKey("script"); err == nil {
-			hook.ConditionScript = key.String()
+	// Parse [requirements] section
+	if reqSection, err := cfg.GetSection("requirements"); err == nil {
+		if key, err := reqSection.GetKey("hooks"); err == nil {
+			value := key.String()
+			if value != "" {
+				hook.RequiredHooks = splitAndTrim(value, ",")
+			}
 		}
-		if key, err := condSection.GetKey("penv-version"); err == nil {
+		if key, err := reqSection.GetKey("pinit-version"); err == nil {
+			constraintStr := key.String()
+			if constraintStr != "" {
+				constraints, err := version.NewConstraint(constraintStr)
+				if err != nil {
+					return nil, fmt.Errorf("invalid pinit-version constraint '%s': %w", constraintStr, err)
+				}
+				hook.PinitVersion = &constraints
+			}
+		}
+		if key, err := reqSection.GetKey("penv-version"); err == nil {
 			constraintStr := key.String()
 			if constraintStr != "" {
 				constraints, err := version.NewConstraint(constraintStr)
@@ -109,6 +106,23 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 				}
 				hook.PenvVersion = &constraints
 			}
+		}
+	}
+
+	// Parse [env:local] section
+	if runEnvSection, err := cfg.GetSection("env:local"); err == nil {
+		for _, key := range runEnvSection.Keys() {
+			hook.RunEnv = append(hook.RunEnv, EnvVariable{
+				Key:   key.Name(),
+				Value: key.String(),
+			})
+		}
+	}
+
+	// Parse [conditions] section
+	if condSection, err := cfg.GetSection("conditions"); err == nil {
+		if key, err := condSection.GetKey("script"); err == nil {
+			hook.ConditionScript = key.String()
 		}
 		if key, err := condSection.GetKey("modes"); err == nil {
 			value := key.String()
@@ -124,8 +138,8 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 		}
 	}
 
-	// Parse [env] section
-	if envSection, err := cfg.GetSection("env"); err == nil {
+	// Parse [env:global] section
+	if envSection, err := cfg.GetSection("env:global"); err == nil {
 		for _, key := range envSection.Keys() {
 			hook.PersistentEnv = append(hook.PersistentEnv, EnvVariable{
 				Key:   key.Name(),
@@ -187,16 +201,6 @@ func (p *Parser) ParseFile(filePath string) (*Hook, error) {
 					hook.TimeoutSeconds = timeout
 				}
 			}
-		}
-	}
-
-	// Parse [run.env] section
-	if runEnvSection, err := cfg.GetSection("run.env"); err == nil {
-		for _, key := range runEnvSection.Keys() {
-			hook.RunEnv = append(hook.RunEnv, EnvVariable{
-				Key:   key.Name(),
-				Value: key.String(),
-			})
 		}
 	}
 

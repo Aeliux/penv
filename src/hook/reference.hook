@@ -3,10 +3,18 @@ name=reference-hook  # Required, must be unique across all hooks
 description=A reference hook for demonstration purposes  # Optional
 version=1.2.3  # Optional
 author=Jane Doe  # Optional
-pinit-version=">=1.0.0,<2.0.0"  # Optional, a version constraint for the pinit version. If omitted, the hook is assumed to be compatible with all pinit versions (not recommended). if the current pinit version does not satisfy the constraint, the hook will be skipped with a warning.
-requires=dependency-hook,another-hook  # Optional, comma-separated list of other hooks that must run before this one. if any of them are missing or failed, this hook will be skipped with a warning.
 success-codes=0,2  # Optional, comma-separated list of exit codes considered successful. If omitted, only exit code 0 is considered successful.
 single-run=true  # Optional, if true, the hook will only run once per pinit execution, even if multiple triggers/modes match. Defaults to false for normal runs, ALWAYS true for service runs.
+
+[requirements]  # Optional, runtime requirements that must be met for the hook to run. If any requirement is not met, the hook will be skipped with a warning.
+hooks=dependency-hook,another-hook  # Optional, comma-separated list of other hooks that must sucessfully run before this one.
+pinit-version=">=1.0.0,<2.0.0"  # Optional, a version constraint for the pinit version. If omitted, the hook is assumed to be compatible with all pinit versions (not recommended).
+penv-version=">=3.0.0,<4.0.0"  # Optional, a version constraint for the penv version. If omitted, the hook is assumed to be compatible with all penv versions.
+
+[env:local]  # Optional, environment variables specific to all executions of the hook's condition script and exec command/script.
+RUN_ONLY_VAR="run_specific_value"  # This variable will only be set during the execution of the hook's condition script and exec command/script.
+ENV_VAR1="overridden_value"  # This will override the same variable defined in [env] for this hook only
+ENV_VAR3="${RUN_ONLY_VAR}_plus"  # Supports variable interpolation from previously defined env:local vars and other environment variables
 
 [conditions]  # Optional, if omitted, the hook will always run. If present, all conditions must be met for the hook to run.
 script="""#!/bin/sh
@@ -16,12 +24,11 @@ if [ "$ENV_VAR" = "expected_value" ]; then
 else
   exit 1
 fi
-"""  # Optional, a script that must return exit codes in success-codes to allow the hook to run
-penv-version=">=3.0.0,<4.0.0"  # Optional, a version constraint for the penv version. If omitted, the hook is assumed to be compatible with all penv versions.
-modes=setup,deploy  # Optional, comma-separated list of modes where the hook will execute
-triggers=on-startup,on-shutdown  # Optional, comma-separated list of triggers for hook execution
+"""  # a script that must return exit codes in success-codes to allow the hook to run
+modes=setup,deploy  # comma-separated list of modes where the hook will execute
+triggers=on-startup,on-shutdown  # comma-separated list of triggers for hook execution
 
-[env]  # environment variables to set when the hook runs, these persist for subsequent processes started by pinit
+[env:global]  # Ignored if the hook is skipped, environment variables to set when the hook runs, these persist for subsequent processes started by pinit
 ENV_VAR1="${USER}_value1"  # Supports basic variable interpolation using existing environment variables. must be in the format ${VAR_NAME}
 ENV_VAR2="${ENV_VAR1}_suffix"  # Supports variable interpolation from previously defined env vars
 
@@ -32,12 +39,7 @@ working-dir="/tmp"  # Optional, the working directory for the hook execution
 restart-count=3  # Optional, for service runs, number of times to restart on failure
 timeout=120  # Optional, for normal runs, maximum execution time in seconds before killing the process. if 0 or omitted, no timeout is applied.
 
-# At least one of [env] or [run] sections must be present for the hook to be valid.
-
-[run.env]  # Optional, environment variables specific to this execution
-RUN_ONLY_VAR="run_specific_value"  # This variable will only be set during the execution of the hook's exec command/script
-ENV_VAR1="overridden_value"  # This will override the same variable defined in [env] for this execution only
-ENV_VAR3="${RUN_ONLY_VAR}_plus"  # Supports variable interpolation from previously defined run.env vars and other environment variables
+# At least one of [env:global] or [run] sections must be present for the hook to be valid.
 
 # Some environment variables automatically provided during hook execution:
 # PINIT_HOOK - The name of the hook being executed
@@ -45,5 +47,5 @@ ENV_VAR3="${RUN_ONLY_VAR}_plus"  # Supports variable interpolation from previous
 # PINIT_HOOK_MODE - The current mode of pinit
 # PINIT_HOOK_TRIGGER - The trigger that caused the hook to execute
 
-# variables from [run.env] passed to the hook's exec and the condition script
+# variables from [env:local] passed to the hook's exec and the condition script
 # but the [env] only applies to the hook's exec and subsequent processes executed by pinit.

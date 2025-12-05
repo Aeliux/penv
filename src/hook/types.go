@@ -37,39 +37,33 @@ type EnvVariable struct {
 
 // Hook represents a parsed hook configuration
 type Hook struct {
-	// Metadata
-	Name         string               // Unique name of the hook
-	Description  string               // Optional description of the hook
-	Version      *version.Version     // Optional version of the hook
-	Author       string               // Optional author of the hook
-	PinitVersion *version.Constraints // Pinit version constraint
-	Requires     []string             // Dependencies on other hooks
-	SuccessCodes []int                // Exit codes considered successful
-	SingleRun    bool                 // If true, the hook will only run once per pinit execution
+	Name         string           // Unique name of the hook
+	Description  string           // Optional description of the hook
+	Version      *version.Version // Optional version of the hook
+	Author       string           // Optional author of the hook
+	SuccessCodes []int            // Exit codes considered successful
+	SingleRun    bool             // If true, the hook will only run once per pinit execution
 
-	// Conditions
-	ConditionScript string               // Script that must return 0 to run the hook
-	PenvVersion     *version.Constraints // Penv version constraint
-	Modes           []string             // Modes where hook will execute
-	Triggers        []string             // Triggers for hook execution
+	RequiredHooks []string             // Dependencies on other hooks
+	PinitVersion  *version.Constraints // Pinit version constraint
+	PenvVersion   *version.Constraints // Penv version constraint
 
-	// Execution configuration
+	ConditionScript string   // Script that must return 0 to run the hook
+	Modes           []string // Modes where hook will execute
+	Triggers        []string // Triggers for hook execution
+
 	Exec       string     // Command or script to execute
 	ExecFormat ExecFormat // Format of execution
 	RunType    RunType    // Type of execution
 	WorkDir    string     // Working directory
 
-	// Environment variables
+	TimeoutSeconds int // Timeout for normal hooks
+
+	RestartCount int // Number of restarts for service hooks
+
 	PersistentEnv []EnvVariable // [env] - Updates proc.EnvironmentVariables, affects all future processes
 	RunEnv        []EnvVariable // [run.env] - Only for this hook's execution
 
-	// Normal run options
-	TimeoutSeconds int // Timeout for normal hooks
-
-	// Service options
-	RestartCount int // Number of restarts for service hooks
-
-	// Runtime state
 	FilePath string // Path to the hook file
 }
 
