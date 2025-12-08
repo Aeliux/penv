@@ -20,7 +20,7 @@
 extern char **environ;
 
 static void fatal(const char *msg) {
-    fprintf(stderr, "urt: %s: %s\n", msg, strerror(errno));
+    fprintf(stderr, "rootbox: %s: %s\n", msg, strerror(errno));
     exit(1);
 }
 
@@ -61,32 +61,40 @@ static void mkdirp(const char *path) {
 
 static void write_file(const char *path, const char *content) {
     int fd = open(path, O_WRONLY);
-    if (fd < 0) return;
+    if (fd < 0) {
+        fprintf(stderr, "warning: failed to open %s: %s\n", path, strerror(errno));
+        return;
+    }
     size_t len = strlen(content);
-    if (write(fd, content, len) != (ssize_t)len) { /* ignore */ }
+    ssize_t written = write(fd, content, len);
+    if (written != (ssize_t)len) {
+        fprintf(stderr, "warning: failed to write to %s: %s\n", path, strerror(errno));
+    }
     close(fd);
 }
 
-static void setup_uid_map(pid_t pid, uid_t outer_uid, uid_t inner_uid) {
+static void setup_uid_map(pid_t pid, uid_t outer_uid) {
     char path[256], map[256];
     snprintf(path, sizeof(path), "/proc/%d/uid_map", pid);
-    snprintf(map, sizeof(map), "%d %d 1\n", inner_uid, outer_uid);
+    /* Map current user to root inside namespace (standard approach) */
+    snprintf(map, sizeof(map), "0 %d 1\n", outer_uid);
     write_file(path, map);
 }
 
-static void setup_gid_map(pid_t pid, gid_t outer_gid, gid_t inner_gid) {
+static void setup_gid_map(pid_t pid, gid_t outer_gid) {
     char path[256], map[256];
     snprintf(path, sizeof(path), "/proc/%d/setgroups", pid);
     write_file(path, "deny\n");
     snprintf(path, sizeof(path), "/proc/%d/gid_map", pid);
-    snprintf(map, sizeof(map), "%d %d 1\n", inner_gid, outer_gid);
+    /* Map current group to root inside namespace (standard approach) */
+    snprintf(map, sizeof(map), "0 %d 1\n", outer_gid);
     write_file(path, map);
 }
 
 static void setup_user_namespace(uid_t outer_uid, gid_t outer_gid) {
     if (unshare(CLONE_NEWUSER) < 0) fatal("unshare(CLONE_NEWUSER) failed");
-    setup_uid_map(getpid(), outer_uid, 0);
-    setup_gid_map(getpid(), outer_gid, 0);
+    setup_uid_map(getpid(), outer_uid);
+    setup_gid_map(getpid(), outer_gid);
 }
 
 int main(int argc, char **argv) {
