@@ -15,7 +15,13 @@ all: clean test build ## Run all tests and build binaries
 
 build: build-client build-pinit ## Build all binaries
 
-build-client: ## Build client binary
+build-pchroot: ## Build pchroot binary
+	@echo "Building pchroot..."
+	@mkdir -p $(BINARY_DIR)
+	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_DIR)/pchroot ./src/pchroot.go
+	@echo "Pchroot built successfully: $(BINARY_DIR)/pchroot"
+
+build-client: build-pchroot ## Build client binary
 	@echo "Building client..."
 	@mkdir -p $(BINARY_DIR)
 	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(CLIENT_BINARY) ./src/client
