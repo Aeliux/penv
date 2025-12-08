@@ -55,6 +55,11 @@ install: ## Install penv client to $PREFIX/bin
 	else \
 		echo "AppArmor not detected, skipping profile installation"; \
 	fi
+	@echo "Installing sysctl configuration for unprivileged ping..."
+	@install -Dm644 ./src/rootbox/sysctl.conf /etc/sysctl.d/99-penv.conf
+	@if command -v sysctl >/dev/null 2>&1; then \
+		sysctl -p /etc/sysctl.d/99-penv.conf >/dev/null 2>&1 || echo "Warning: Failed to apply sysctl (may need sudo)"; \
+	fi
 	@echo "Installation complete!"
 
 test: ## Run tests
