@@ -8,29 +8,31 @@ CLIENT_BINARY := $(BINARY_DIR)/client
 PINIT_BINARY := $(BINARY_DIR)/pinit
 GO ?= go
 GOPATH ?= $(shell $(GO) env GOPATH)
-GOFLAGS ?= -v
-LDFLAGS ?= -s -w
+GOFLAGS ?= -v -trimpath
+LDFLAGS ?= -s -w -extldflags "-static"
+CFLAGS ?= -Os -ffunction-sections -fdata-sections
+CLDFLAGS ?= -Wl,--gc-sections
 
 all: clean test build ## Run all tests and build binaries
 
-build: build-client build-pinit ## Build all binaries
+build: rootbox client pinit ## Build all binaries
 
-build-pchroot: ## Build pchroot binary
-	@echo "Building pchroot..."
+rootbox: ## Build rootbox binary
+	@echo "Building RootBox..."
 	@mkdir -p $(BINARY_DIR)
-	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_DIR)/pchroot ./src/pchroot.go
-	@echo "Pchroot built successfully: $(BINARY_DIR)/pchroot"
+	$(CC) $(CFLAGS) -Wall -o $(BINARY_DIR)/rootbox ./src/rootbox.c $(CLDFLAGS) -static -s
+	@echo "RootBox built successfully: $(BINARY_DIR)/rootbox"
 
-build-client: build-pchroot ## Build client binary
+client: ## Build client binary
 	@echo "Building client..."
 	@mkdir -p $(BINARY_DIR)
-	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(CLIENT_BINARY) ./src/client
+	CGO_ENABLED=0 $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(CLIENT_BINARY) ./src/client
 	@echo "Client built successfully: $(CLIENT_BINARY)"
 
-build-pinit: ## Build pinit binary
+pinit: ## Build pinit binary
 	@echo "Building pinit..."
 	@mkdir -p $(BINARY_DIR)
-	$(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(PINIT_BINARY) ./src/pinit
+	CGO_ENABLED=0 $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(PINIT_BINARY) ./src/pinit
 	@echo "Pinit built successfully: $(PINIT_BINARY)"
 
 install: ## Install client to $PREFIX/bin
@@ -73,14 +75,6 @@ clean: ## Clean build artifacts
 	@rm -rf $(BINARY_DIR)
 	@rm -f coverage.out coverage.html
 	@echo "Cleaned"
-
-run-client: build-client ## Build and run client
-	@echo "Running client..."
-	@./$(CLIENT_BINARY)
-
-run-pinit: build-pinit ## Build and run pinit
-	@echo "Running pinit..."
-	@./$(PINIT_BINARY)
 
 deps: ## List dependencies
 	@echo "Dependencies:"
