@@ -13,7 +13,7 @@ GO ?= go
 GOPATH ?= $(shell $(GO) env GOPATH)
 
 GOFLAGS ?= -v -trimpath
-LDFLAGS ?= -s -w -extldflags "-static"
+LDFLAGS ?= -s -w
 CFLAGS ?= -Os -ffunction-sections -fdata-sections
 CLDFLAGS ?= -Wl,--gc-sections
 
@@ -24,7 +24,7 @@ build: rootbox client pinit ## Build all binaries
 rootbox: ## Build rootbox binary
 	@echo "Building RootBox..."
 	@mkdir -p $(BINARY_DIR)
-	$(CC) $(CFLAGS) -Wall -o $(ROOTBOX_BINARY) ./src/rootbox.c $(CLDFLAGS) -static -s
+	$(CC) $(CFLAGS) -Wall -o $(ROOTBOX_BINARY) ./src/rootbox/rootbox.c $(CLDFLAGS) -s
 	@echo "RootBox built successfully: $(ROOTBOX_BINARY)"
 
 client: ## Build client binary
@@ -46,7 +46,7 @@ install: ## Install penv client to $PREFIX/bin
 	@echo "Binaries installed to $(PREFIX)/bin"
 	@if command -v apparmor_parser >/dev/null 2>&1; then \
 		echo "Installing AppArmor profile..."; \
-		install -Dm644 ./src/apparmor.profile /etc/apparmor.d/penv-rootbox; \
+		install -Dm644 ./src/rootbox/apparmor.profile /etc/apparmor.d/penv-rootbox; \
 		if apparmor_parser -r /etc/apparmor.d/penv-rootbox 2>/dev/null; then \
 			echo "AppArmor profile installed and loaded"; \
 		else \
