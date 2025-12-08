@@ -3,11 +3,15 @@
 
 # Variables
 PREFIX ?= /usr/local
+
 BINARY_DIR := bin
 CLIENT_BINARY := $(BINARY_DIR)/client
 PINIT_BINARY := $(BINARY_DIR)/pinit
+ROOTBOX_BINARY := $(BINARY_DIR)/rootbox
+
 GO ?= go
 GOPATH ?= $(shell $(GO) env GOPATH)
+
 GOFLAGS ?= -v -trimpath
 LDFLAGS ?= -s -w -extldflags "-static"
 CFLAGS ?= -Os -ffunction-sections -fdata-sections
@@ -20,8 +24,8 @@ build: rootbox client pinit ## Build all binaries
 rootbox: ## Build rootbox binary
 	@echo "Building RootBox..."
 	@mkdir -p $(BINARY_DIR)
-	$(CC) $(CFLAGS) -Wall -o $(BINARY_DIR)/rootbox ./src/rootbox.c $(CLDFLAGS) -static -s
-	@echo "RootBox built successfully: $(BINARY_DIR)/rootbox"
+	$(CC) $(CFLAGS) -Wall -o $(ROOTBOX_BINARY) ./src/rootbox.c $(CLDFLAGS) -static -s
+	@echo "RootBox built successfully: $(ROOTBOX_BINARY)"
 
 client: ## Build client binary
 	@echo "Building client..."
@@ -35,10 +39,23 @@ pinit: ## Build pinit binary
 	CGO_ENABLED=0 $(GO) build $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(PINIT_BINARY) ./src/pinit
 	@echo "Pinit built successfully: $(PINIT_BINARY)"
 
-install: ## Install client to $PREFIX/bin
-	@echo "Installing client..."
+install: ## Install penv client to $PREFIX/bin
+	@echo "Installing penv binaries..."
 	install -Dm755 $(CLIENT_BINARY) $(PREFIX)/bin/penv
-	@echo "Client installed to $(PREFIX)/bin/penv"
+	install -Dm755 $(ROOTBOX_BINARY) $(PREFIX)/bin/rootbox
+	@echo "Binaries installed to $(PREFIX)/bin"
+	@if command -v apparmor_parser >/dev/null 2>&1; then \
+		echo "Installing AppArmor profile..."; \
+		install -Dm644 ./src/apparmor.profile /etc/apparmor.d/penv-rootbox; \
+		if apparmor_parser -r /etc/apparmor.d/penv-rootbox 2>/dev/null; then \
+			echo "AppArmor profile installed and loaded"; \
+		else \
+			echo "Warning: Failed to load AppArmor profile (may need sudo)"; \
+		fi; \
+	else \
+		echo "AppArmor not detected, skipping profile installation"; \
+	fi
+	@echo "Installation complete!"
 
 test: ## Run tests
 	@echo "Running tests..."
