@@ -24,8 +24,17 @@ build: rootbox client pinit ## Build all binaries
 rootbox: ## Build rootbox binary
 	@echo "Building RootBox..."
 	@mkdir -p $(BINARY_DIR)
-	$(CC) $(CFLAGS) -Wall -o $(ROOTBOX_BINARY) ./src/rootbox/rootbox.c $(CLDFLAGS) -s
+	$(CC) $(CFLAGS) -Wall -o $(ROOTBOX_BINARY) \
+		./src/rootbox/main.c \
+		./src/rootbox/utils.c \
+		./src/rootbox/namespace.c \
+		./src/rootbox/mount.c \
+		./src/rootbox/pty.c \
+		./src/rootbox/overlayfs.c \
+		$(CLDFLAGS) -lutil -s
+	@ln -sf rootbox $(BINARY_DIR)/rootbox-ofs
 	@echo "RootBox built successfully: $(ROOTBOX_BINARY)"
+	@echo "OverlayFS symlink created: $(BINARY_DIR)/rootbox-ofs"
 
 client: ## Build client binary
 	@echo "Building client..."
