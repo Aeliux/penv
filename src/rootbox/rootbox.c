@@ -10,12 +10,14 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/sysmacros.h>
 #include <termios.h>
 #include <signal.h>
 #include <limits.h>
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <pty.h>
 
 extern char **environ;
 
@@ -35,13 +37,73 @@ static void make_mount_private(void) {
     }
 }
 
-static void make_tty_sane(int fd) {
+static void restore_tty(int fd, struct termios *saved) {
+    if (isatty(fd)) {
+        tcsetattr(fd, TCSANOW, saved);
+    }
+}
+
+static int setup_pty(int *master_fd, int *slave_fd) {
+    char slave_name[PATH_MAX];
     struct termios tio;
-    if (!isatty(fd)) return;
-    if (tcgetattr(fd, &tio) < 0) return;
-    tio.c_lflag |= (ICANON | ECHO);
-    tio.c_iflag |= ISTRIP;
-    tcsetattr(fd, TCSANOW, &tio);
+    struct winsize ws;
+    
+    /* Get current terminal settings to copy them */
+    int has_tty = isatty(STDIN_FILENO);
+    if (has_tty) {
+        if (tcgetattr(STDIN_FILENO, &tio) < 0) {
+            fprintf(stderr, "warning: tcgetattr failed: %s\n", strerror(errno));
+            has_tty = 0;
+        }
+        if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) < 0) {
+            fprintf(stderr, "warning: TIOCGWINSZ failed: %s\n", strerror(errno));
+            ws.ws_row = 24;
+            ws.ws_col = 80;
+        }
+    } else {
+        /* Default terminal size */
+        ws.ws_row = 24;
+        ws.ws_col = 80;
+    }
+    
+    /* Open PTY pair */
+    if (openpty(master_fd, slave_fd, slave_name, has_tty ? &tio : NULL, &ws) < 0) {
+        return -1;
+    }
+    
+    return 0;
+}
+
+static void io_loop(int master_fd, pid_t child_pid) {
+    char buf[4096];
+    fd_set readfds;
+    int max_fd = (master_fd > STDIN_FILENO ? master_fd : STDIN_FILENO) + 1;
+    
+    while (1) {
+        FD_ZERO(&readfds);
+        FD_SET(STDIN_FILENO, &readfds);
+        FD_SET(master_fd, &readfds);
+        
+        int ret = select(max_fd, &readfds, NULL, NULL, NULL);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        
+        /* Data from stdin -> pty master */
+        if (FD_ISSET(STDIN_FILENO, &readfds)) {
+            ssize_t n = read(STDIN_FILENO, buf, sizeof(buf));
+            if (n <= 0) break;
+            if (write(master_fd, buf, n) != n) break;
+        }
+        
+        /* Data from pty master -> stdout */
+        if (FD_ISSET(master_fd, &readfds)) {
+            ssize_t n = read(master_fd, buf, sizeof(buf));
+            if (n <= 0) break;
+            if (write(STDOUT_FILENO, buf, n) != n) break;
+        }
+    }
 }
 
 static void mkdirp(const char *path) {
@@ -100,8 +162,12 @@ static void setup_user_namespace(uid_t outer_uid, gid_t outer_gid) {
 int main(int argc, char **argv) {
     char *new_root, *cmd_path, new_root_abs[PATH_MAX];
     char proc_dir[PATH_MAX], sys_dir[PATH_MAX], dev_dir[PATH_MAX], tmp_dir[PATH_MAX];
+    char devpts_dir[PATH_MAX];
     uid_t original_uid = getuid();
     gid_t original_gid = getgid();
+    int master_fd = -1, slave_fd = -1;
+    struct termios saved_tio;
+    int saved_tty = 0;
     
     if (argc < 3) usage();
     new_root = argv[1];
@@ -117,6 +183,20 @@ int main(int argc, char **argv) {
         fatal("path too long");
     if (snprintf(tmp_dir, sizeof(tmp_dir), "%s/tmp", new_root_abs) >= (int)sizeof(tmp_dir))
         fatal("path too long");
+    if (snprintf(devpts_dir, sizeof(devpts_dir), "%s/dev/pts", new_root_abs) >= (int)sizeof(devpts_dir))
+        fatal("path too long");
+
+    /* Save original terminal settings */
+    if (isatty(STDIN_FILENO)) {
+        if (tcgetattr(STDIN_FILENO, &saved_tio) == 0) {
+            saved_tty = 1;
+        }
+    }
+
+    /* Set up PTY pair */
+    if (setup_pty(&master_fd, &slave_fd) < 0) {
+        fatal("failed to create PTY");
+    }
 
     if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0) {
         fprintf(stderr, "warning: PR_SET_PDEATHSIG failed: %s\n", strerror(errno));
@@ -144,12 +224,35 @@ int main(int argc, char **argv) {
     pid_t pid = fork();
     if (pid < 0) fatal("fork failed");
     if (pid > 0) {
+        /* Parent process */
+        close(slave_fd);
+        
+        /* Put our terminal in raw mode for proper forwarding */
+        if (isatty(STDIN_FILENO)) {
+            struct termios raw = saved_tio;
+            cfmakeraw(&raw);
+            tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+        }
+        
+        /* Handle I/O between terminal and PTY */
+        io_loop(master_fd, pid);
+        
+        /* Wait for child */
         int status;
         waitpid(pid, &status, 0);
+        
+        /* Restore terminal */
+        close(master_fd);
+        if (saved_tty) {
+            restore_tty(STDIN_FILENO, &saved_tio);
+        }
+        
         exit(WIFEXITED(status) ? WEXITSTATUS(status) : 1);
     }
     
     /* Child (PID 1) continues */
+    close(master_fd);
+    
     make_mount_private();
     
     /* Create necessary directories */
@@ -158,6 +261,7 @@ int main(int argc, char **argv) {
     mkdirp(dev_dir);
     mkdirp(tmp_dir);
     
+    /* Bind mount /dev for access to system devpts */
     mount("/dev", dev_dir, "", MS_BIND | MS_REC, "");
     mount("proc", proc_dir, "proc", 0, "");
     mount("sysfs", sys_dir, "sysfs", 0, "");
@@ -165,7 +269,25 @@ int main(int argc, char **argv) {
     
     if (chroot(new_root_abs) < 0) fatal("chroot failed");
     if (chdir("/") < 0) fatal("chdir failed");
-    make_tty_sane(STDIN_FILENO);
+    
+    /* Become session leader */
+    if (setsid() < 0) {
+        fprintf(stderr, "warning: setsid failed: %s\n", strerror(errno));
+    }
+    
+    /* Redirect stdio to the slave PTY */
+    if (dup2(slave_fd, STDIN_FILENO) < 0) fatal("dup2 stdin failed");
+    if (dup2(slave_fd, STDOUT_FILENO) < 0) fatal("dup2 stdout failed");
+    if (dup2(slave_fd, STDERR_FILENO) < 0) fatal("dup2 stderr failed");
+    
+    if (slave_fd > STDERR_FILENO) {
+        close(slave_fd);
+    }
+    
+    /* Set controlling terminal */
+    if (ioctl(STDIN_FILENO, TIOCSCTTY, 0) < 0) {
+        fprintf(stderr, "warning: TIOCSCTTY failed: %s\n", strerror(errno));
+    }
 
     /* Disable setuid/setgid binaries inside the chroot for security */
     prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
