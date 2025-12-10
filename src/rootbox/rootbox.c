@@ -166,6 +166,10 @@ int main(int argc, char **argv) {
     if (chroot(new_root_abs) < 0) fatal("chroot failed");
     if (chdir("/") < 0) fatal("chdir failed");
     make_tty_sane(STDIN_FILENO);
+
+    /* Disable setuid/setgid binaries inside the chroot for security */
+    prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+
     execve(cmd_path, argv + 2, environ);
     fatal("execve failed");
 }
