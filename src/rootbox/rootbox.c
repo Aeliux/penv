@@ -127,9 +127,17 @@ int main(int argc, char **argv) {
         setup_user_namespace(original_uid, original_gid);
     }
     
-    /* Unshare mount and PID namespaces */
-    if (unshare(CLONE_NEWNS | CLONE_NEWPID) < 0) {
+    /* Unshare mount, PID and uts namespaces */
+    if (unshare(CLONE_NEWNS | CLONE_NEWPID | CLONE_NEWUTS) < 0) {
         fprintf(stderr, "warning: unshare failed: %s\n", strerror(errno));
+    }
+
+    /* set host and domain names*/
+    if (sethostname("rootbox", 7) < 0) {
+        fprintf(stderr, "warning: sethostname failed: %s\n", strerror(errno));
+    }
+    if (setdomainname("rootbox", 7) < 0) {
+        fprintf(stderr, "warning: setdomainname failed: %s\n", strerror(errno));
     }
     
     /* Fork - child becomes PID 1 */
