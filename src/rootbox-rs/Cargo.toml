@@ -1,0 +1,42 @@
+[package]
+name = "rootbox"
+version = "2.0.0"
+edition = "2021"
+authors = ["aeliux"]
+description = "A container-like isolation tool using Linux namespaces and overlayfs"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# CLI parsing
+clap = { version = "4.5", features = ["derive", "cargo"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Configuration
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+# Linux system calls
+nix = { version = "0.29", features = ["user", "mount", "sched", "process", "hostname", "signal", "ioctl", "term", "fs", "poll"] }
+libc = "0.2"
+
+# PTY handling
+portable-pty = "0.8"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Path and filesystem utilities
+tempfile = "3.12"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
