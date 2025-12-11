@@ -45,3 +45,6 @@ temp/
 output/
 *.tar.gz
 *.tar.xz
+
+# Rust specific
+src/rootbox-rs/target/
