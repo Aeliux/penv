@@ -1,6 +1,6 @@
 use crate::config::{BindMount, Config};
 use crate::error::{Result, RootboxError};
-use nix::mount::{mount, umount2, MntFlags, MsFlags};
+use nix::mount::{mount, MsFlags};
 use nix::unistd::chroot;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,29 +15,6 @@ pub struct MountManager {
 impl MountManager {
     pub fn new(config: Config) -> Self {
         Self { config }
-    }
-
-    /// Make root mount private
-    pub fn make_root_private(&self) -> Result<()> {
-        if !self.config.mounts.make_root_private {
-            return Ok(());
-        }
-
-        debug!("Making root mount private");
-
-        mount(
-            None::<&str>,
-            "/",
-            None::<&str>,
-            MsFlags::MS_REC | MsFlags::MS_PRIVATE,
-            None::<&str>,
-        )
-        .map_err(|e| {
-            warn!("Failed to make root private: {}", e);
-            RootboxError::MountError(format!("Failed to make root private: {}", e))
-        })?;
-
-        Ok(())
     }
 
     /// Setup basic mounts (proc, sys, dev, tmp) inside the new root
@@ -225,7 +202,9 @@ pub struct OverlayFsManager {
     image_path: PathBuf,
     extra_layers: Option<Vec<PathBuf>>,
     persist_path: Option<PathBuf>,
-    temp_dirs: Vec<TempDir>,
+    temp_upper: Option<PathBuf>,
+    temp_work: PathBuf,
+    temp_merged: PathBuf,
 }
 
 impl OverlayFsManager {
@@ -234,55 +213,51 @@ impl OverlayFsManager {
         extra_layers: Option<Vec<PathBuf>>,
         persist_path: Option<PathBuf>,
     ) -> Self {
+        let mut upper = None;
+        if persist_path.is_none() {
+            upper = Some(TempDir::new().expect("Failed to create temp upper dir").keep());
+            info!(
+                "Using temporary upper dir at {}",
+                upper.as_ref().unwrap().display()
+            );
+        } else {
+            info!(
+                "Using persistent upper dir at {}",
+                persist_path.as_ref().unwrap().display()
+            );
+        }
+
+        let work = TempDir::new().expect("Failed to create temp work dir").keep();
+        let merged = TempDir::new().expect("Failed to create temp merged dir").keep();
+
         Self {
             image_path,
             extra_layers,
             persist_path,
-            temp_dirs: Vec::new(),
+            temp_upper: upper,
+            temp_work: work,
+            temp_merged: merged,
         }
     }
 
+    pub fn get_final_root(&self) -> PathBuf {
+        self.temp_merged.clone()
+    }
+
     /// Setup overlayfs and return the merged path
-    pub fn setup(&mut self) -> Result<PathBuf> {
+    pub fn setup(&mut self) -> Result<()> {
         info!(
             "Setting up OverlayFS with image: {}",
             self.image_path.display()
         );
 
-        // Create temporary directories
-        let merged_dir = TempDir::new().map_err(|e| {
-            RootboxError::OverlayFsError(format!("Failed to create merged directory: {}", e))
-        })?;
-
-        let work_dir = TempDir::new().map_err(|e| {
-            RootboxError::OverlayFsError(format!("Failed to create work directory: {}", e))
-        })?;
-
-        let merged_path = merged_dir.path().to_path_buf();
-        let work_path = work_dir.path().to_path_buf();
-
-        // Determine upper directory
-        let (upper_path, _upper_is_temp) = match &self.persist_path {
-            Some(persist) => {
-                info!("Using persistent overlay at: {}", persist.display());
-                // Create persist directory if it doesn't exist
-                fs::create_dir_all(persist).map_err(|e| {
-                    RootboxError::OverlayFsError(format!(
-                        "Failed to create persist directory: {}",
-                        e
-                    ))
-                })?;
-                (persist.clone(), false)
-            },
-            None => {
-                info!("Using ephemeral overlay");
-                let upper_dir = TempDir::new().map_err(|e| {
-                    RootboxError::OverlayFsError(format!("Failed to create upper directory: {}", e))
-                })?;
-                let upper_path = upper_dir.path().to_path_buf();
-                self.temp_dirs.push(upper_dir);
-                (upper_path, true)
-            },
+        let upper_path = if let Some(persist) = &self.persist_path {
+            persist.clone()
+        } else {
+            self.temp_upper
+                .as_ref()
+                .expect("Temp upper dir should exist")
+                .clone()
         };
 
         // Build lowerdir string
@@ -302,7 +277,7 @@ impl OverlayFsManager {
             "lowerdir={},upperdir={},workdir={}",
             lower_string,
             upper_path.display(),
-            work_path.display()
+            self.temp_work.display()
         );
 
         debug!("OverlayFS options: {}", options);
@@ -310,20 +285,53 @@ impl OverlayFsManager {
         // Mount overlayfs
         mount(
             Some("overlay"),
-            &merged_path,
+            &self.temp_merged,
             Some("overlay"),
             MsFlags::empty(),
             Some(options.as_str()),
         )
         .map_err(|e| RootboxError::OverlayFsError(format!("Failed to mount overlayfs: {}", e)))?;
 
-        info!("OverlayFS mounted at: {}", merged_path.display());
+        info!("OverlayFS mounted at: {}", self.temp_merged.display());
 
-        // Store temp directories so they don't get dropped
-        self.temp_dirs.push(merged_dir);
-        self.temp_dirs.push(work_dir);
+        Ok(())
+    }
 
-        Ok(merged_path)
+    pub fn cleanup(&self) -> Result<()> {
+        info!("Cleaning up OverlayFS");
+
+        // Remove temporary directories
+        
+        if let Some(upper) = &self.temp_upper {
+            debug!("Removing temp upper dir at {}", upper.display());
+            fs::remove_dir_all(upper).map_err(|e| {
+                RootboxError::OverlayFsError(format!(
+                    "Failed to remove temp upper dir {}: {}",
+                    upper.display(),
+                    e
+                ))
+            })?;
+        }
+
+        debug!("Removing temp work dir at {}", self.temp_work.display());
+        fs::remove_dir_all(&self.temp_work).map_err(|e| {
+            RootboxError::OverlayFsError(format!(
+                "Failed to remove temp work dir {}: {}",
+                self.temp_work.display(),
+                e
+            ))
+        })?;
+
+        debug!("Removing temp mount dir at {}", self.temp_merged.display());
+        fs::remove_dir_all(&self.temp_merged).map_err(|e| {
+            RootboxError::OverlayFsError(format!(
+                "Failed to remove temp merged dir {}: {}",
+                self.temp_merged.display(),
+                e
+            ))
+        })?;
+
+        Ok(())
     }
 }
 

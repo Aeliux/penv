@@ -259,13 +259,13 @@ fn run_overlay(
     let ofs_manager = OverlayFsManager::new(root_dir.clone(), extra_layers, persist);
 
     // Run container - overlayfs will be setup in child process
-    run_container(config, root_dir, Some(ofs_manager), command, args)
+    run_container(config, ofs_manager.get_final_root(), Some(ofs_manager), command, args)
 }
 
 /// Main container execution logic
 fn run_container(
     config: Config,
-    root_path: PathBuf,
+    final_root: PathBuf,
     ofs_manager: Option<OverlayFsManager>,
     command: String,
     args: Vec<String>,
@@ -285,6 +285,9 @@ fn run_container(
 
     // Setup other namespaces
     ns_manager.setup_namespaces()?;
+
+    // Setup mount manager
+    let mount_manager = MountManager::new(config.clone());
 
     // Fork to create child process (becomes PID 1 in PID namespace)
     match unsafe { fork() } {
@@ -315,6 +318,12 @@ fn run_container(
 
             info!("Child exited with status: {:?}", wait_status);
 
+            // Cleanup overlayfs if used
+            if let Some(ofs) = ofs_manager {
+                // Cleanup overlayfs temporary directories
+                ofs.cleanup()?;
+            }
+
             Ok(())
         },
         Ok(ForkResult::Child) => {
@@ -323,18 +332,12 @@ fn run_container(
             // Close master fd
             nix::unistd::close(master_fd).ok();
 
-            // Setup mount manager
-            let mount_manager = MountManager::new(config.clone());
-
-            // Make root mount private
-            mount_manager.make_root_private()?;
+            // Setup mount namespace
+            ns_manager.setup_mount_namespace()?;
 
             // Setup overlayfs if needed (MUST be done after namespaces, in child)
-            let final_root = if let Some(mut ofs) = ofs_manager {
-                let merged = ofs.setup()?;
-                merged
-            } else {
-                root_path.clone()
+            if let Some(mut ofs) = ofs_manager {
+                ofs.setup()?;
             };
 
             // Setup basic mounts

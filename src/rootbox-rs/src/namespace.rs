@@ -2,6 +2,7 @@ use crate::config::Config;
 use crate::error::{Result, RootboxError};
 use nix::sched::{unshare, CloneFlags};
 use nix::unistd::{getgid, getpid, getuid, sethostname, Gid, Uid};
+use nix::mount::{mount, MsFlags};
 use std::fs::OpenOptions;
 use std::io::Write;
 use tracing::{debug, info, warn};
@@ -94,10 +95,6 @@ impl NamespaceManager {
     pub fn setup_namespaces(&self) -> Result<()> {
         let mut flags = CloneFlags::empty();
 
-        if self.config.features.mount_namespace {
-            flags |= CloneFlags::CLONE_NEWNS;
-        }
-
         if self.config.features.pid_namespace {
             flags |= CloneFlags::CLONE_NEWPID;
         }
@@ -127,6 +124,39 @@ impl NamespaceManager {
                 self.set_hostname("rootbox")?;
             }
         }
+
+        Ok(())
+    }
+
+    pub fn setup_mount_namespace(&self) -> Result<()> {
+        if !self.config.features.mount_namespace {
+            warn!("Mount namespace disabled in config");
+            return Ok(());
+        }
+
+        info!("Setting up mount namespace");
+
+        unshare(CloneFlags::CLONE_NEWNS).map_err(|e| {
+            RootboxError::NamespaceError(format!("Failed to unshare mount namespace: {}", e))
+        })?;
+
+        if !self.config.mounts.make_root_private {
+            return Ok(());
+        }
+
+        debug!("Making root mount private");
+
+        mount(
+            None::<&str>,
+            "/",
+            None::<&str>,
+            MsFlags::MS_REC | MsFlags::MS_PRIVATE,
+            None::<&str>,
+        )
+        .map_err(|e| {
+            warn!("Failed to make root private: {}", e);
+            RootboxError::MountError(format!("Failed to make root private: {}", e))
+        })?;
 
         Ok(())
     }

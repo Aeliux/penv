@@ -35,9 +35,6 @@ pub enum RootboxError {
 
     #[error("Process error: {0}")]
     ProcessError(String),
-
-    #[error("Permission denied: {0}")]
-    PermissionError(String),
 }
 
 pub type Result<T> = std::result::Result<T, RootboxError>;
