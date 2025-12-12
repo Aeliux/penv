@@ -1,8 +1,8 @@
 use crate::config::Config;
 use crate::error::{Result, RootboxError};
+use nix::mount::{mount, MsFlags};
 use nix::sched::{unshare, CloneFlags};
 use nix::unistd::{getgid, getpid, getuid, sethostname, Gid, Uid};
-use nix::mount::{mount, MsFlags};
 use std::fs::OpenOptions;
 use std::io::Write;
 use tracing::{debug, info, warn};

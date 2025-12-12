@@ -4,7 +4,7 @@ mod mount;
 mod namespace;
 mod pty;
 
-use clap::{Parser, Subcommand, CommandFactory};
+use clap::{CommandFactory, Parser, Subcommand};
 use config::Config;
 use error::{Result, RootboxError};
 use mount::{MountManager, OverlayFsManager};
@@ -259,7 +259,13 @@ fn run_overlay(
     let ofs_manager = OverlayFsManager::new(root_dir.clone(), extra_layers, persist);
 
     // Run container - overlayfs will be setup in child process
-    run_container(config, ofs_manager.get_final_root(), Some(ofs_manager), command, args)
+    run_container(
+        config,
+        ofs_manager.get_final_root(),
+        Some(ofs_manager),
+        command,
+        args,
+    )
 }
 
 /// Main container execution logic

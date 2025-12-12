@@ -215,7 +215,11 @@ impl OverlayFsManager {
     ) -> Self {
         let mut upper = None;
         if persist_path.is_none() {
-            upper = Some(TempDir::new().expect("Failed to create temp upper dir").keep());
+            upper = Some(
+                TempDir::new()
+                    .expect("Failed to create temp upper dir")
+                    .keep(),
+            );
             info!(
                 "Using temporary upper dir at {}",
                 upper.as_ref().unwrap().display()
@@ -227,8 +231,12 @@ impl OverlayFsManager {
             );
         }
 
-        let work = TempDir::new().expect("Failed to create temp work dir").keep();
-        let merged = TempDir::new().expect("Failed to create temp merged dir").keep();
+        let work = TempDir::new()
+            .expect("Failed to create temp work dir")
+            .keep();
+        let merged = TempDir::new()
+            .expect("Failed to create temp merged dir")
+            .keep();
 
         Self {
             image_path,
@@ -301,7 +309,7 @@ impl OverlayFsManager {
         info!("Cleaning up OverlayFS");
 
         // Remove temporary directories
-        
+
         if let Some(upper) = &self.temp_upper {
             debug!("Removing temp upper dir at {}", upper.display());
             fs::remove_dir_all(upper).map_err(|e| {
