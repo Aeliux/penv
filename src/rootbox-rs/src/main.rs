@@ -4,7 +4,7 @@ mod mount;
 mod namespace;
 mod pty;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, CommandFactory};
 use config::Config;
 use error::{Result, RootboxError};
 use mount::{MountManager, OverlayFsManager};
@@ -13,6 +13,7 @@ use nix::sys::wait::waitpid;
 use nix::unistd::{fork, ForkResult};
 use pty::PtyManager;
 use std::ffi::CString;
+use std::io::Write;
 use std::path::PathBuf;
 use tracing::{error, info};
 use tracing_subscriber::{fmt, EnvFilter};
@@ -56,7 +57,11 @@ enum Commands {
         #[arg(value_name = "ROOT_DIR")]
         root_dir: PathBuf,
 
-        /// Path to persistence directory (optional, for persistent mode)
+        /// Extra layers for lowerdir (multiple allowed, ordered)
+        #[arg(short, long, value_name = "EXTRA_LAYERS")]
+        extra_layers: Option<Vec<PathBuf>>,
+
+        /// Path to persistence directory (optional, upper layer)
         #[arg(short, long, value_name = "PERSIST_DIR")]
         persist: Option<PathBuf>,
 
@@ -74,6 +79,11 @@ enum Commands {
         /// Output file path
         #[arg(value_name = "OUTPUT", default_value = "rootbox.toml")]
         output: PathBuf,
+    },
+    Completion {
+        /// Shell type (bash, zsh, fish, powershell, elvish)
+        #[arg(value_name = "SHELL")]
+        shell: String,
     },
 }
 
@@ -138,6 +148,15 @@ fn run() -> anyhow::Result<()> {
         Commands::GenConfig { output } => {
             generate_config(&output)?;
         },
+        Commands::Completion { shell } => {
+            let mut cmd = Cli::command();
+            let shell: clap_complete::Shell = shell.parse().map_err(|e| {
+                RootboxError::ConfigError(format!("Invalid shell for completion: {}", e))
+            })?;
+            let mut buffer = Vec::new();
+            clap_complete::generate(shell, &mut cmd, "rootbox", &mut buffer);
+            std::io::stdout().write_all(&buffer)?;
+        },
         Commands::Enter {
             root_dir,
             command,
@@ -148,12 +167,13 @@ fn run() -> anyhow::Result<()> {
         },
         Commands::Overlay {
             root_dir,
+            extra_layers,
             persist,
             command,
             args,
         } => {
             let config = Config::load_or_default(cli.config.as_ref())?;
-            run_overlay(config, root_dir, persist, command, args)?;
+            run_overlay(config, root_dir, extra_layers, persist, command, args)?;
         },
     }
 
@@ -197,6 +217,7 @@ fn run_enter(
 fn run_overlay(
     config: Config,
     root_dir: PathBuf,
+    extra_layers: Option<Vec<PathBuf>>,
     persist: Option<PathBuf>,
     command: String,
     args: Vec<String>,
@@ -221,8 +242,21 @@ fn run_overlay(
         )));
     }
 
+    // Verify extra layers exist
+    if let Some(ref layers) = extra_layers {
+        for layer in layers {
+            info!("Extra lowerdir layer: {}", layer.display());
+            if !layer.exists() {
+                return Err(RootboxError::PathError(format!(
+                    "Extra lowerdir layer does not exist: {}",
+                    layer.display()
+                )));
+            }
+        }
+    }
+
     // Create OverlayFS manager but don't setup yet (will be done in child after namespaces)
-    let ofs_manager = OverlayFsManager::new(root_dir.clone(), persist);
+    let ofs_manager = OverlayFsManager::new(root_dir.clone(), extra_layers, persist);
 
     // Run container - overlayfs will be setup in child process
     run_container(config, root_dir, Some(ofs_manager), command, args)
@@ -278,8 +312,6 @@ fn run_container(
 
             // Restore terminal
             pty_manager.restore_terminal()?;
-
-            // Note: OverlayFS cleanup happens automatically when temp dirs drop in child
 
             info!("Child exited with status: {:?}", wait_status);
 

@@ -223,6 +223,7 @@ impl MountManager {
 /// OverlayFS manager for handling overlayfs mounts
 pub struct OverlayFsManager {
     image_path: PathBuf,
+    extra_layers: Option<Vec<PathBuf>>,
     persist_path: Option<PathBuf>,
     temp_dirs: Vec<TempDir>,
 }
@@ -230,10 +231,12 @@ pub struct OverlayFsManager {
 impl OverlayFsManager {
     pub fn new(
         image_path: PathBuf,
+        extra_layers: Option<Vec<PathBuf>>,
         persist_path: Option<PathBuf>,
     ) -> Self {
         Self {
             image_path,
+            extra_layers,
             persist_path,
             temp_dirs: Vec::new(),
         }
@@ -282,10 +285,22 @@ impl OverlayFsManager {
             },
         };
 
+        // Build lowerdir string
+        let mut lower_dirs = vec![self.image_path.to_string_lossy().to_string()];
+        if let Some(extra_layers) = &self.extra_layers {
+            for layer in extra_layers {
+                lower_dirs.push(layer.to_string_lossy().to_string());
+            }
+        }
+        // Reverse to have the correct order
+        lower_dirs.reverse();
+
+        let lower_string = lower_dirs.join(":");
+
         // Build overlayfs mount options
         let options = format!(
             "lowerdir={},upperdir={},workdir={}",
-            self.image_path.display(),
+            lower_string,
             upper_path.display(),
             work_path.display()
         );
@@ -310,35 +325,6 @@ impl OverlayFsManager {
 
         Ok(merged_path)
     }
-
-    /// Cleanup overlayfs mount
-    pub fn cleanup(
-        &mut self,
-        merged_path: &Path,
-    ) -> Result<()> {
-        debug!("Cleaning up OverlayFS at {}", merged_path.display());
-
-        // Unmount overlayfs
-        if let Err(e) = umount2(merged_path, MntFlags::MNT_DETACH) {
-            warn!("Failed to unmount overlayfs: {}", e);
-        }
-
-        // Temp directories will be automatically cleaned up when dropped
-        self.temp_dirs.clear();
-
-        Ok(())
-    }
-}
-
-/// Utility function to recursively create directories
-pub fn mkdir_p(path: &Path) -> Result<()> {
-    fs::create_dir_all(path).map_err(|e| {
-        RootboxError::MountError(format!(
-            "Failed to create directory {}: {}",
-            path.display(),
-            e
-        ))
-    })
 }
 
 #[cfg(test)]
@@ -350,13 +336,5 @@ mod tests {
         let config = Config::default();
         let manager = MountManager::new(config);
         assert!(manager.config.mounts.mount_proc);
-    }
-
-    #[test]
-    fn test_mkdir_p() {
-        let temp_dir = TempDir::new().unwrap();
-        let nested_path = temp_dir.path().join("a/b/c/d");
-        mkdir_p(&nested_path).unwrap();
-        assert!(nested_path.exists());
     }
 }
