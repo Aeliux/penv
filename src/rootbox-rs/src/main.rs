@@ -88,29 +88,58 @@ enum Commands {
     },
 }
 
-/// Custom log writer that converts LF to CRLF for raw terminal mode
-struct CrlfWriter<W> {
-    inner: W,
+/// Simple logger with CRLF conversion and color support
+struct SimpleLogger {
+    use_color: bool,
+    max_length: u8,
 }
 
-impl<W: std::io::Write> std::io::Write for CrlfWriter<W> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let mut output = Vec::with_capacity(buf.len() * 2);
-        for &byte in buf {
-            if byte == b'\n' {
-                output.push(b'\r');
-                output.push(b'\n');
-            } else {
-                output.push(byte);
-            }
+impl SimpleLogger {
+    fn new(use_color: bool) -> Self {
+        SimpleLogger {
+            use_color,
+            max_length: 10,
         }
-        self.inner.write_all(&output)?;
-        Ok(buf.len())
+    }
+}
+
+impl log::Log for SimpleLogger {
+    fn enabled(&self, _metadata: &log::Metadata) -> bool {
+        true
     }
 
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.inner.flush()
+    fn log(&self, record: &log::Record) {
+        if self.enabled(record.metadata()) {
+            use std::io::Write;
+            
+            let level_color = if self.use_color {
+                match record.level() {
+                    log::Level::Error => "\x1b[31m",  // Red
+                    log::Level::Warn => "\x1b[33m",   // Yellow
+                    log::Level::Info => "\x1b[32m",   // Green
+                    log::Level::Debug => "\x1b[36m",  // Cyan
+                    log::Level::Trace => "\x1b[35m",  // Magenta
+                }
+            } else {
+                ""
+            };
+            let reset = if self.use_color { "\x1b[0m" } else { "" };
+
+            let max_length = self.max_length as usize;
+            
+            // Write with CRLF line endings
+            let _ = writeln!(
+                std::io::stderr(),
+                "{}{:<max_length$}{} {}\r",
+                level_color,
+                format!("[{}({})]", record.level(), if std::process::id() == 1 { "C" } else { "P" }),
+                reset,
+                record.args()
+            );
+        }
     }
+
+    fn flush(&self) {}
 }
 
 fn main() {
@@ -123,7 +152,7 @@ fn main() {
 fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // Setup logging with CRLF writer for raw terminal mode
+    // Setup simple logger with CRLF writer and colors for TTY
     let log_level = if cli.verbose {
         LevelFilter::Debug
     } else {
@@ -133,14 +162,13 @@ fn run() -> anyhow::Result<()> {
             .unwrap_or(LevelFilter::Warn)
     };
 
-    env_logger::Builder::new()
-        .filter_level(log_level)
-        .format_target(false)
-        .write_style(env_logger::WriteStyle::Auto)
-        .target(env_logger::Target::Pipe(Box::new(CrlfWriter {
-            inner: std::io::stderr(),
-        })))
-        .init();
+    // Check if stderr is a TTY once at startup
+    let use_color = unsafe { libc::isatty(libc::STDERR_FILENO) == 1 };
+    
+    // Simple logger with color support for TTY - bypass env_logger's pipe and use direct stderr
+    log::set_boxed_logger(Box::new(SimpleLogger::new(use_color)))
+        .map(|()| log::set_max_level(log_level))
+        .expect("Failed to initialize logger");
 
     match cli.command {
         Commands::GenConfig { output } => {
