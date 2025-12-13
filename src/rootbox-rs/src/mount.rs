@@ -4,8 +4,7 @@ use nix::mount::{mount, MsFlags};
 use nix::unistd::chroot;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tempfile::TempDir;
-use tracing::{debug, info, warn};
+use log::{debug, info, warn};
 
 /// Mount manager for handling filesystem operations
 pub struct MountManager {
@@ -215,11 +214,7 @@ impl OverlayFsManager {
     ) -> Self {
         let mut upper = None;
         if persist_path.is_none() {
-            upper = Some(
-                TempDir::new()
-                    .expect("Failed to create temp upper dir")
-                    .keep(),
-            );
+            upper = Some(Self::create_temp_dir("rootbox-upper"));
             info!(
                 "Using temporary upper dir at {}",
                 upper.as_ref().unwrap().display()
@@ -231,12 +226,8 @@ impl OverlayFsManager {
             );
         }
 
-        let work = TempDir::new()
-            .expect("Failed to create temp work dir")
-            .keep();
-        let merged = TempDir::new()
-            .expect("Failed to create temp merged dir")
-            .keep();
+        let work = Self::create_temp_dir("rootbox-work");
+        let merged = Self::create_temp_dir("rootbox-merged");
 
         Self {
             image_path,
@@ -246,6 +237,18 @@ impl OverlayFsManager {
             temp_work: work,
             temp_merged: merged,
         }
+    }
+    
+    /// Create a temporary directory with a random suffix
+    fn create_temp_dir(prefix: &str) -> PathBuf {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("{}-{}", prefix, timestamp));
+        fs::create_dir_all(&path).expect("Failed to create temp directory");
+        path
     }
 
     pub fn get_final_root(&self) -> PathBuf {

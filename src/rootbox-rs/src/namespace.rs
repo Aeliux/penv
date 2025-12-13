@@ -5,7 +5,7 @@ use nix::sched::{unshare, CloneFlags};
 use nix::unistd::{getgid, getpid, getuid, sethostname, Gid, Uid};
 use std::fs::OpenOptions;
 use std::io::Write;
-use tracing::{debug, info, warn};
+use log::{debug, info, warn};
 
 /// Namespace manager for setting up Linux namespaces
 pub struct NamespaceManager {

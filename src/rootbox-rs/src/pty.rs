@@ -7,7 +7,7 @@ use nix::sys::termios::{tcgetattr, tcsetattr, SetArg, Termios};
 use nix::unistd::{dup2, setsid, Pid};
 use std::io::{self};
 use std::os::unix::io::{AsRawFd, BorrowedFd, RawFd};
-use tracing::{debug, warn};
+use log::{debug, warn};
 
 /// PTY manager for pseudo-terminal handling
 pub struct PtyManager {

@@ -27,9 +27,6 @@ pub enum RootboxError {
     #[error("System call error: {0}")]
     SyscallError(#[from] nix::Error),
 
-    #[error("Configuration error: {0}")]
-    ConfigError(String),
-
     #[error("Invalid path: {0}")]
     PathError(String),
 

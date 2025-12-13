@@ -4,7 +4,9 @@ mod mount;
 mod namespace;
 mod pty;
 
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{Parser, Subcommand};
+#[cfg(feature = "shell-completion")]
+use clap::CommandFactory;
 use config::Config;
 use error::{Result, RootboxError};
 use mount::{MountManager, OverlayFsManager};
@@ -13,10 +15,8 @@ use nix::sys::wait::waitpid;
 use nix::unistd::{fork, ForkResult};
 use pty::PtyManager;
 use std::ffi::CString;
-use std::io::Write;
 use std::path::PathBuf;
-use tracing::{error, info};
-use tracing_subscriber::{fmt, EnvFilter};
+use log::{error, info, LevelFilter};
 
 #[derive(Parser)]
 #[command(name = "rootbox")]
@@ -80,6 +80,7 @@ enum Commands {
         #[arg(value_name = "OUTPUT", default_value = "rootbox.toml")]
         output: PathBuf,
     },
+    #[cfg(feature = "shell-completion")]
     Completion {
         /// Shell type (bash, zsh, fish, powershell, elvish)
         #[arg(value_name = "SHELL")]
@@ -87,19 +88,14 @@ enum Commands {
     },
 }
 
-/// Custom log writer that converts LF to CRLF
-/// This ensures logs display correctly even when terminal is in raw mode
+/// Custom log writer that converts LF to CRLF for raw terminal mode
 struct CrlfWriter<W> {
     inner: W,
 }
 
 impl<W: std::io::Write> std::io::Write for CrlfWriter<W> {
-    fn write(
-        &mut self,
-        buf: &[u8],
-    ) -> std::io::Result<usize> {
-        // Convert LF to CRLF
-        let mut output = Vec::with_capacity(buf.len());
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let mut output = Vec::with_capacity(buf.len() * 2);
         for &byte in buf {
             if byte == b'\n' {
                 output.push(b'\r');
@@ -109,7 +105,7 @@ impl<W: std::io::Write> std::io::Write for CrlfWriter<W> {
             }
         }
         self.inner.write_all(&output)?;
-        Ok(buf.len()) // Return original length
+        Ok(buf.len())
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
@@ -127,27 +123,30 @@ fn main() {
 fn run() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // Setup logging
-    let filter = if cli.verbose {
-        EnvFilter::new("debug")
+    // Setup logging with CRLF writer for raw terminal mode
+    let log_level = if cli.verbose {
+        LevelFilter::Debug
     } else {
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn"))
+        std::env::var("RUST_LOG")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(LevelFilter::Warn)
     };
 
-    // Use custom writer that converts LF to CRLF
-    // This ensures logs work correctly when terminal is in raw mode
-    fmt()
-        .with_env_filter(filter)
-        .with_target(false)
-        .with_writer(|| CrlfWriter {
+    env_logger::Builder::new()
+        .filter_level(log_level)
+        .format_target(false)
+        .write_style(env_logger::WriteStyle::Auto)
+        .target(env_logger::Target::Pipe(Box::new(CrlfWriter {
             inner: std::io::stderr(),
-        })
+        })))
         .init();
 
     match cli.command {
         Commands::GenConfig { output } => {
             generate_config(&output)?;
         },
+        #[cfg(feature = "shell-completion")]
         Commands::Completion { shell } => {
             let mut cmd = Cli::command();
             let shell: clap_complete::Shell = shell.parse().map_err(|e| {
