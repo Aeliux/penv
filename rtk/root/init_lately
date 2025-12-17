@@ -4,15 +4,29 @@
 
 echo "basic init system started"
 
+# parse arguments (format --tty tty)
+PREFERRED_TTY="/dev/ttyS0"
+while [ $# -gt 0 ]; do
+  case $1 in
+    --tty)
+      shift
+      PREFERRED_TTY="$1"
+      ;;
+  esac
+  shift
+done
+
 cd /
 
 # Start a getty on ttyS0 and wait for it
-/tmp/busybox getty -nl /bin/bash 0 /dev/ttyS0 xterm-256color &
+/tmp/busybox getty -nl /bin/bash 0 "$PREFERRED_TTY" xterm-256color &
 CONSOLE_PID=$!
 
-echo "Interactive console started on ttyS0 (PID: $CONSOLE_PID)"
+echo "Interactive console started on $PREFERRED_TTY (PID: $CONSOLE_PID)"
 # Wait for the console to exit
 wait $CONSOLE_PID
+ex_code=$?
+echo "Console on $PREFERRED_TTY exited with code $ex_code"
 
 # Poweroff when the getty exits
 /tmp/busybox poweroff -f

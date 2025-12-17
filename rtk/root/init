@@ -3,6 +3,18 @@
 # init script to be run in the initial ramdisk environment
 
 echo "Welcome to Rootbox Tiny Kernel on $(uname -sr)"
+echo "Invoked as: $0 $*"
+
+PREFERRED_TTY="/dev/ttyS0"
+
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    --tty:*)
+      PREFERRED_TTY="${arg#--tty:}"
+      ;;
+  esac
+done
 
 if ! mountpoint -q /dev 2>/dev/null; then
   mkdir -p /dev
@@ -11,6 +23,8 @@ fi
 
 mount -t proc proc /proc || true
 mount -t sysfs sysfs /sys || true
+
+echo "Mounting root filesystem from host..."
 
 # create target mount point
 mkdir -p /mnt/host
@@ -21,6 +35,8 @@ mount -t 9p -o trans=virtio,version=9p2000.L host0 /mnt/host || {
   echo "Failed to mount host 9p share; dropping to shell"
   exec /bin/sh
 }
+
+echo "Preparing root filesystem switch..."
 
 # Mount necessary filesystems
 mkdir -p /mnt/host/dev
@@ -48,7 +64,17 @@ mount -t tmpfs tmpfs /mnt/host/tmp || true
 
 # Copy busybox to host fs for late init use
 cp /bin/busybox /mnt/host/tmp/busybox
-cp /init_lately /mnt/host/tmp/init_lately
+
+if [ -e /mnt/host/sbin/pinit_rtk ]; then
+  INIT_CMD="/sbin/pinit_rtk"
+fi
+
+if [ -z "$INIT_CMD" ]; then
+  cp /init_lately /mnt/host/tmp/init_lately
+  INIT_CMD="/tmp/init_lately"
+fi
 
 # Switch to host root filesystem
-exec /sbin/switch_root /mnt/host /tmp/init_lately
+echo "Switching to host root filesystem..."
+set -x
+exec /sbin/switch_root /mnt/host "$INIT_CMD" -- --tty "$PREFERRED_TTY"
