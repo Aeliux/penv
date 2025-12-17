@@ -64,14 +64,14 @@ mount -t tmpfs tmpfs /mnt/host/tmp || true
 
 # Copy busybox to host fs for late init use
 cp /bin/busybox /mnt/host/tmp/busybox
+cp -R /rtk /mnt/host/tmp/rtk
 
 if [ -e /mnt/host/sbin/pinit_rtk ]; then
   INIT_CMD="/sbin/pinit_rtk"
 fi
 
 if [ -z "$INIT_CMD" ]; then
-  cp /init_lately /mnt/host/tmp/init_lately
-  INIT_CMD="/tmp/init_lately"
+  INIT_CMD="/tmp/rtk/init_lately"
 fi
 
 # Switch to host root filesystem

@@ -18,6 +18,10 @@ done
 
 cd /
 
+# Set up network in background
+echo "Starting network setup in background..."
+/tmp/rtk/netsetup.sh &
+
 # Start a getty on ttyS0 and wait for it
 /tmp/busybox getty -nl /bin/bash 0 "$PREFERRED_TTY" xterm-256color &
 CONSOLE_PID=$!
