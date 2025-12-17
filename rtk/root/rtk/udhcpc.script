@@ -1,0 +1,54 @@
+#!/bin/sh
+# udhcpc script using /tmp/busybox
+
+RESOLV_CONF="/etc/resolv.conf"
+BB="/tmp/busybox"
+
+[ -z "$1" ] && echo "Error: should be called from udhcpc" && exit 1
+
+case "$1" in
+	deconfig)
+		echo "Deconfiguring interface $interface"
+		$BB ip addr flush dev $interface
+		$BB ip link set dev $interface up
+		;;
+
+	renew|bound)
+		echo "Configuring interface $interface"
+		
+		# Set IP address
+		if [ -n "$ip" ]; then
+			$BB ip addr add $ip/${mask:-24} broadcast ${broadcast:-+} dev $interface
+		fi
+		
+		# Set default gateway
+		if [ -n "$router" ]; then
+			$BB ip route add default via $router dev $interface
+		fi
+		
+		# Update DNS
+		if [ -n "$dns" ]; then
+			: > $RESOLV_CONF
+			[ -n "$domain" ] && echo "search $domain" >> $RESOLV_CONF
+			for i in $dns; do
+				echo "nameserver $i" >> $RESOLV_CONF
+			done
+		fi
+		
+		# Set hostname if provided
+		if [ -n "$hostname" ]; then
+			$BB hostname "$hostname"
+		fi
+		;;
+
+	leasefail|nak)
+		echo "DHCP failed on $interface"
+		;;
+
+	*)
+		echo "Unknown udhcpc command: $1"
+		exit 1
+		;;
+esac
+
+exit 0
