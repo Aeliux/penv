@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# init_lately script to be run on the host filesystem after mounting it
+
+cd /
+
+# Start a getty on ttyS0 and wait for it
+/tmp/busybox getty -nl /bin/bash 0 /dev/ttyS0 xterm-256color
+
+# Poweroff when the getty exits
+/tmp/busybox poweroff -f

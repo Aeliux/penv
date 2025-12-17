@@ -1,0 +1,49 @@
+#!/bin/sh
+if ! mountpoint -q /dev 2>/dev/null; then
+  mkdir -p /dev
+  mount -t devtmpfs devtmpfs /dev || true
+fi
+
+mount -t proc proc /proc || true
+mount -t sysfs sysfs /sys || true
+
+# create target mount point
+mkdir -p /mnt/host
+
+# Mount the host export (mount_tag=host0 in QEMU args)
+# trans=virtio is required for virtio transport; use version=9p2000.L for modern qemu
+mount -t 9p -o trans=virtio,version=9p2000.L host0 /mnt/host || {
+  echo "Failed to mount host 9p share; dropping to shell"
+  exec /bin/sh
+}
+
+# Mount necessary filesystems
+mkdir -p /mnt/host/dev
+mount -t devtmpfs devtmpfs /mnt/host/dev || true
+
+mkdir -p /mnt/host/proc
+mount -t proc proc /mnt/host/proc || true
+
+mkdir -p /mnt/host/sys
+mount -t sysfs sysfs /mnt/host/sys || true
+
+# mount all dev/* filesystems
+mkdir -p /mnt/host/dev/pts
+mount -t devpts devpts /mnt/host/dev/pts || true
+
+mkdir -p /mnt/host/dev/shm
+mount -t tmpfs tmpfs /mnt/host/dev/shm || true
+
+mkdir -p /mnt/host/dev/mqueue
+mount -t mqueue mqueue /mnt/host/dev/mqueue || true
+
+mkdir -p /mnt/host/tmp
+chmod 1777 /mnt/host/tmp
+mount -t tmpfs tmpfs /mnt/host/tmp || true
+
+# Copy busybox to host fs for late init use
+cp /bin/busybox /mnt/host/tmp/busybox
+cp /init_lately /mnt/host/tmp/init_lately
+
+# Switch to host root filesystem
+exec /sbin/switch_root /mnt/host /tmp/init_lately
