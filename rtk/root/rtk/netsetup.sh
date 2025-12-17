@@ -35,7 +35,7 @@ for cmd in cat echo printf date grep awk sed tr cut sleep basename ip ifconfig r
   setup_cmd "$cmd"
 done
 
-LOG="/dev/tty2"
+LOG="/tmp/netsetup.log"
 exec >>"$LOG" 2>&1 || exec 1>/dev/null 2>&1
 
 log() { $printf '%s %s\n' "$($date +%FT%T%z 2>/dev/null || $date)" "$*" ; }
@@ -63,7 +63,7 @@ log "Tools: ip=$IP, ifconfig=$IFCONFIG, udhcpc=$UDHCPC, dhclient=$DHCLIENT"
 # bring up loopback
 if [ $IP -eq 1 ]; then
   log "Bringing up loopback (ip)"
-  $ip link set lo up 2>/dev/null || true
+  $ip link set lo up || true
 else
   log "Bringing up loopback (ifconfig)"
   $ifconfig lo up 2>/dev/null || true
@@ -147,7 +147,7 @@ start_dhcp() {
   if [ $UDHCPC -eq 1 ]; then
     log "Starting udhcpc (BusyBox) on $iface"
     # -b: background, -i interface; let hooks update /etc/resolv.conf
-    $udhcpc -i "$iface" -b >/dev/null 2>&1 || {
+    $udhcpc -i "$iface" -b -s /tmp/rtk/udhcpc.script || {
       log "udhcpc spawn failed for $iface"
     }
     return 0
@@ -217,7 +217,7 @@ have_default=0
 if [ $IP -eq 1 ]; then
   $ip route show | $grep -q '^default' && have_default=1
 else
-  $route -n | $awk '{if ($1=="0.0.0.0") {print; exit 0}}' >/dev/null && have_default=1
+  $route -n | $awk '{if ($1=="0.0.0.0") {print; exit 0}}' && have_default=1
 fi
 
 if [ $have_default -eq 0 ]; then
@@ -237,7 +237,7 @@ if [ $have_default -eq 0 ]; then
       if [ -n "$ipaddr" ]; then
         gw=$($echo "$ipaddr" | $awk -F. '{printf "%d.%d.%d.1", $1,$2,$3}')
         log "Adding default route via $gw dev $first_iface (best-effort)"
-        $ip route add default via "$gw" dev "$first_iface" 2>/dev/null || log "failed to add default route"
+        $ip route add default via "$gw" dev "$first_iface" || log "failed to add default route"
       fi
     else
       # ifconfig-based, try route add default gw
@@ -245,7 +245,7 @@ if [ $have_default -eq 0 ]; then
       if [ -n "$ipaddr" ]; then
         gw=$($echo "$ipaddr" | $awk -F. '{printf "%d.%d.%d.1", $1,$2,$3}')
         log "Adding default route via $gw dev $first_iface (best-effort)"
-        $route add default gw "$gw" dev "$first_iface" 2>/dev/null || log "failed to add default route (ifconfig)"
+        $route add default gw "$gw" dev "$first_iface" || log "failed to add default route (ifconfig)"
       fi
     fi
   else

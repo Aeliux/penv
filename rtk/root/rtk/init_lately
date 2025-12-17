@@ -18,8 +18,13 @@ done
 
 cd /
 
+# Set up devices
+echo "Setting up devices..."
+/tmp/busybox mdev -df &
+
 # Set up network in background
 echo "Starting network setup in background..."
+/tmp/busybox mdev -s
 /tmp/rtk/netsetup.sh &
 
 # Start a getty on ttyS0 and wait for it
