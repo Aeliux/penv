@@ -2,10 +2,17 @@
 
 # init_lately script to be run on the host filesystem after mounting it
 
+echo "basic init system started"
+
 cd /
 
 # Start a getty on ttyS0 and wait for it
-/tmp/busybox getty -nl /bin/bash 0 /dev/ttyS0 xterm-256color
+/tmp/busybox getty -nl /bin/bash 0 /dev/ttyS0 xterm-256color &
+CONSOLE_PID=$!
+
+echo "Interactive console started on ttyS0 (PID: $CONSOLE_PID)"
+# Wait for the console to exit
+wait $CONSOLE_PID
 
 # Poweroff when the getty exits
 /tmp/busybox poweroff -f

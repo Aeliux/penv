@@ -1,4 +1,9 @@
 #!/bin/sh
+
+# init script to be run in the initial ramdisk environment
+
+echo "Welcome to Rootbox Tiny Kernel on $(uname -sr)"
+
 if ! mountpoint -q /dev 2>/dev/null; then
   mkdir -p /dev
   mount -t devtmpfs devtmpfs /dev || true
