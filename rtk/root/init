@@ -73,7 +73,7 @@ fi
 if [ -z "$INIT_CMD" ]; then
   INIT_CMD="/tmp/rtk/init_lately"
 fi
-
+exec /bin/sh
 # Switch to host root filesystem
 echo "Switching to host root filesystem..."
 set -x

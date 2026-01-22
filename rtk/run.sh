@@ -17,14 +17,15 @@ qemu-system-x86_64 \
 	-m 64M -accel kvm \
 	-machine pc \
 	-append "quiet" \
-	-virtfs local,path="$rootfs",mount_tag=host0,security_model=none \
+	-virtfs local,path="$rootfs",mount_tag=host0,security_model=none,id=host0 \
 	-serial pty \
 	-display none \
 	-nic user,model=virtio \
 	"$@" \
-	1> "$QEMU_OUT" 2>1 &
+	1> "$QEMU_OUT" 2>&1 &
 
 set +x
+echo "QEMU output redirected to $QEMU_OUT"
 QEMU_PID=$!
 
 # Extract PTY path
